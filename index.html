@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!--
+  TEMPLATE: to make a site for a new client, edit ONLY the CONFIG and MENU
+  blocks in the first script block, right after the opening body tag. Colours
+  are the variables at the top of the style block. See README.md for the steps.
+-->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Namma Fresh Bakes</title>
@@ -93,6 +98,40 @@
 </style>
 </head>
 <body>
+<script>
+/* =====================================================
+   EDIT THIS BLOCK FOR EACH NEW CLIENT
+   ===================================================== */
+const CONFIG = {
+  shopName: "Namma Fresh Bakes",
+  tagline: "Small-batch bakes from a Bengaluru home kitchen",
+  whatsapp: "919449923575",   // country code + number, no + or spaces
+  area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
+  leadDays: 1,                // earliest delivery date = today + this many days
+  askDeliveryDate: true       // false hides the date field (for shops that don't need one)
+};
+
+/* =====================================================
+   MENU: one line per item.
+   - id: a unique number; never reuse one within the same menu
+   - category: items with identical category text are grouped together
+   - price: in rupees, numbers only
+   - available: false shows the item as "Sold out"
+   ===================================================== */
+const MENU = [
+  { id: 1,  name: "Custom Photo-Theme Cake (1 kg)", category: "Custom cakes", price: 1800, description: "Fondant or buttercream finish. Share your theme and message when you order.", available: true },
+  { id: 2,  name: "Black Forest Celebration Cake (1 kg)", category: "Custom cakes", price: 950, description: "Chocolate sponge, whipped cream, cherries.", available: true },
+  { id: 3,  name: "Eggless Chocolate Truffle Cake (1 kg)", category: "Eggless cakes", price: 1100, description: "Dense, rich, and fully eggless.", available: true },
+  { id: 4,  name: "Eggless Mango Cream Cake (1 kg)", category: "Eggless cakes", price: 1200, description: "Seasonal Alphonso mango. Sold out when mangoes are out of season.", available: false },
+  { id: 5,  name: "Sourdough Loaf (500 g)", category: "Sourdough and artisan breads", price: 220, description: "72-hour ferment, crackly crust. Baked fresh on weekends.", available: true },
+  { id: 6,  name: "Multigrain Seed Loaf (400 g)", category: "Sourdough and artisan breads", price: 180, description: "Sunflower, flax and pumpkin seeds.", available: true },
+  { id: 7,  name: "Butter Cookies (box of 12)", category: "Cookies", price: 260, description: "Classic, crisp, and not too sweet.", available: true },
+  { id: 8,  name: "Choco-Chip Cookies (box of 6)", category: "Cookies", price: 240, description: "Soft centre, brown-sugar edges.", available: true },
+  { id: 9,  name: "Ragi Chocolate Brownies (box of 6)", category: "Millet-based bakes", price: 320, description: "Finger millet flour, jaggery-sweetened.", available: true },
+  { id: 10, name: "Jowar Banana Muffins (box of 4)", category: "Millet-based bakes", price: 200, description: "Sorghum flour, ripe banana, a little cinnamon.", available: true }
+];
+</script>
+
 
 <header>
   <h1 id="shopName"></h1>
@@ -141,7 +180,7 @@
         <textarea id="fAddress" rows="3" autocomplete="street-address" placeholder="House no., street, area, landmark" required aria-describedby="err-fAddress"></textarea>
         <span class="err" id="err-fAddress" role="alert"></span>
       </div>
-      <div class="field">
+      <div class="field" id="fieldDate">
         <label for="fDate">Delivery date</label>
         <input id="fDate" type="date" required aria-describedby="err-fDate">
         <span class="err" id="err-fDate" role="alert"></span>
@@ -159,33 +198,6 @@
 </aside>
 
 <script>
-/* =====================================================
-   EDIT THIS BLOCK FOR EACH NEW CLIENT
-   ===================================================== */
-const CONFIG = {
-  shopName: "Namma Fresh Bakes",
-  tagline: "Small-batch bakes from a Bengaluru home kitchen",
-  whatsapp: "917022238844",   // country code + number, no + or spaces
-  area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
-  leadDays: 1                 // earliest delivery date = today + this many days
-};
-
-/* =====================================================
-   MENU: change names, prices (in rupees) and availability here
-   ===================================================== */
-const MENU = [
-  { id: 1,  name: "Custom Photo-Theme Cake (1 kg)", category: "Custom cakes", price: 1800, description: "Fondant or buttercream finish. Share your theme and message when you order.", available: true },
-  { id: 2,  name: "Black Forest Celebration Cake (1 kg)", category: "Custom cakes", price: 950, description: "Chocolate sponge, whipped cream, cherries.", available: true },
-  { id: 3,  name: "Eggless Chocolate Truffle Cake (1 kg)", category: "Eggless cakes", price: 1100, description: "Dense, rich, and fully eggless.", available: true },
-  { id: 4,  name: "Eggless Mango Cream Cake (1 kg)", category: "Eggless cakes", price: 1200, description: "Seasonal Alphonso mango. Sold out when mangoes are out of season.", available: false },
-  { id: 5,  name: "Sourdough Loaf (500 g)", category: "Sourdough and artisan breads", price: 220, description: "72-hour ferment, crackly crust. Baked fresh on weekends.", available: true },
-  { id: 6,  name: "Multigrain Seed Loaf (400 g)", category: "Sourdough and artisan breads", price: 180, description: "Sunflower, flax and pumpkin seeds.", available: true },
-  { id: 7,  name: "Butter Cookies (box of 12)", category: "Cookies", price: 260, description: "Classic, crisp, and not too sweet.", available: true },
-  { id: 8,  name: "Choco-Chip Cookies (box of 6)", category: "Cookies", price: 240, description: "Soft centre, brown-sugar edges.", available: true },
-  { id: 9,  name: "Ragi Chocolate Brownies (box of 6)", category: "Millet-based bakes", price: 320, description: "Finger millet flour, jaggery-sweetened.", available: true },
-  { id: 10, name: "Jowar Banana Muffins (box of 4)", category: "Millet-based bakes", price: 200, description: "Sorghum flour, ripe banana, a little cinnamon.", available: true }
-];
-
 /* ===== Rendering (don't edit unless you're changing how the page works) ===== */
 const rupees = n => "₹" + n.toLocaleString("en-IN");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -305,7 +317,7 @@ function orderLink(total) {
     `Name: ${d.name}`,
     `Phone: +91 ${d.phone}`,
     `Address: ${d.address}`,
-    `Date: ${formatDate(d.date)}`,
+    ...(CONFIG.askDeliveryDate ? [`Date: ${formatDate(d.date)}`] : []),
     ...(d.notes ? [`Notes: ${d.notes}`] : [])
   ].join("\n");
   return `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
@@ -379,7 +391,7 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- Delivery details ---------- */
-const REQUIRED = ["fName", "fPhone", "fAddress", "fDate"];
+const REQUIRED = ["fName", "fPhone", "fAddress", ...(CONFIG.askDeliveryDate ? ["fDate"] : [])];
 let attempted = false;           // show errors live only after the first send attempt
 
 function localISO(d) {
@@ -449,6 +461,7 @@ $("checkout").addEventListener("click", e => {
 });
 
 /* ---------- Start ---------- */
+$("fieldDate").hidden = !CONFIG.askDeliveryDate;
 document.title = CONFIG.shopName;
 $("shopName").textContent = CONFIG.shopName;
 $("tagline").textContent = CONFIG.tagline;
