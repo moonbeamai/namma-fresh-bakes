@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Namma Fresh Bakes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --oxide: #8f2d1f;      /* red-oxide */
+    --gold: #d9a01e;       /* turmeric gold */
+    --ivory: #fbf6ea;      /* rice-flour ivory */
+    --ink: #2b1a14;
+    --muted: #6d5a50;
+    --line: #e6d9bd;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ivory); color: var(--ink); font-family: "Hind", system-ui, sans-serif; line-height: 1.55; }
+  body.lock { overflow: hidden; }
+  h1, h2, h3 { font-family: "Young Serif", Georgia, serif; font-weight: 400; margin: 0; }
+  header { background: var(--oxide); color: var(--ivory); padding: 40px 20px 36px; text-align: center; }
+  header h1 { font-size: clamp(2rem, 7vw, 3.2rem); }
+  header p { margin: 8px auto 0; max-width: 34ch; color: #f1dcc0; }
+  .kolam { height: 14px; background: radial-gradient(circle, var(--gold) 3px, transparent 3.5px) 0 0 / 22px 14px repeat-x; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
+  .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
+  .filters button { flex: none; border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); padding: 8px 16px; border-radius: 999px; font: 500 0.95rem "Hind", sans-serif; cursor: pointer; }
+  .filters button.active { background: var(--oxide); color: var(--ivory); }
+  .category { margin-top: 28px; }
+  .category h2 { font-size: 1.5rem; color: var(--oxide); padding-bottom: 6px; border-bottom: 2px dotted var(--gold); }
+  .item { display: flex; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .item h3 { font-size: 1.1rem; }
+  .item p { margin: 4px 0 0; color: var(--muted); font-size: 0.95rem; }
+  .price { font-weight: 600; white-space: nowrap; }
+  .ctl { margin-top: 10px; min-height: 40px; }
+  .btn { display: inline-block; background: var(--oxide); color: var(--ivory); border: 0; padding: 10px 20px; border-radius: 8px; font: 600 0.95rem "Hind", sans-serif; text-decoration: none; cursor: pointer; }
+  .btn:focus-visible, .filters button:focus-visible, .stepper button:focus-visible,
+  .remove:focus-visible, .bar button:focus-visible, .close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .sold { opacity: 0.55; }
+  .sold .btn { background: #b9aaa0; pointer-events: none; }
+  footer { text-align: center; padding: 28px 16px 48px; color: var(--muted); font-size: 0.9rem; }
+
+  /* Quantity stepper: - / qty / + */
+  .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--oxide); border-radius: 8px; overflow: hidden; background: var(--ivory); }
+  .stepper button { width: 42px; height: 40px; background: transparent; border: 0; color: var(--oxide); font: 600 1.3rem "Hind", sans-serif; cursor: pointer; }
+  .stepper button:disabled { opacity: 0.35; cursor: default; }
+  .stepper .qty { min-width: 34px; text-align: center; font-weight: 600; }
+
+  /* Sticky cart bar */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
+  .bar button { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 736px; margin: 0 auto; padding: 14px 18px; border: 0; border-radius: 14px; background: var(--oxide); color: var(--ivory); font: 600 1rem "Hind", sans-serif; box-shadow: 0 6px 18px rgba(43, 26, 20, 0.35); cursor: pointer; }
+  .bar .go { color: #f1dcc0; font-weight: 500; }
+
+  /* Cart panel (bottom sheet) */
+  .overlay { position: fixed; inset: 0; z-index: 30; background: rgba(43, 26, 20, 0.5); opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
+  .overlay.open { opacity: 1; visibility: visible; }
+  .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; flex-direction: column; max-width: 520px; max-height: 88vh; max-height: 88dvh; margin: 0 auto; background: var(--ivory); border-radius: 18px 18px 0 0; transform: translateY(100%); visibility: hidden; transition: transform 0.25s ease, visibility 0.25s; }
+  .panel.open { transform: none; visibility: visible; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 2px dotted var(--gold); }
+  .panel-head h2 { font-size: 1.35rem; color: var(--oxide); }
+  .close { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; }
+  .panel-body { flex: 1; padding: 0 18px; overflow-y: auto; }
+  .lines { margin: 0; padding: 0; list-style: none; }
+  .details { padding: 18px 0 22px; }
+  .details h3 { margin-bottom: 12px; font-size: 1.1rem; color: var(--oxide); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
+  .field .opt { font-weight: 400; color: var(--muted); }
+  .field input, .field textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
+  .field textarea { resize: vertical; }
+  .field input:focus-visible, .field textarea:focus-visible { border-color: var(--oxide); outline: 3px solid var(--gold); outline-offset: 1px; }
+  .field [aria-invalid="true"] { border-color: #b3261e; }
+  .err { display: block; margin-top: 3px; color: #b3261e; font-size: 0.85rem; }
+  .err:empty { display: none; }
+  .line { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .line-info { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+  .line-info strong { font-weight: 600; }
+  .unit { color: var(--muted); font-size: 0.9rem; }
+  .remove { margin-top: 4px; padding: 4px 0; border: 0; background: none; color: var(--oxide); font: 500 0.9rem "Hind", sans-serif; text-decoration: underline; cursor: pointer; }
+  .line-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .line-total { font-weight: 600; white-space: nowrap; }
+  .empty { padding: 28px 0; text-align: center; color: var(--muted); }
+  .panel-foot { padding: 14px 18px calc(16px + env(safe-area-inset-bottom, 0px)); border-top: 2px dotted var(--gold); }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1.15rem; font-weight: 600; }
+  .checkout { display: block; padding: 13px 16px; text-align: center; }
+  .checkout[aria-disabled="true"] { background: #b9aaa0; pointer-events: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .overlay, .panel { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="shopName"></h1>
+  <p id="tagline"></p>
+</header>
+<div class="kolam" aria-hidden="true"></div>
+
+<main>
+  <div class="filters" id="filters" role="group" aria-label="Menu categories"></div>
+  <div id="menu"></div>
+</main>
+
+<footer id="footer"></footer>
+
+<!-- Sticky cart bar -->
+<div class="bar" id="bar" hidden>
+  <button type="button" id="openCart" aria-haspopup="dialog">
+    <span id="barCount"></span>
+    <span><span id="barTotal"></span> <span class="go">· View cart</span></span>
+  </button>
+</div>
+
+<!-- Cart panel -->
+<div class="overlay" id="overlay"></div>
+<aside class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+  <div class="panel-head">
+    <h2 id="panelTitle">Your order</h2>
+    <button type="button" class="close" id="closeCart" aria-label="Close cart">&times;</button>
+  </div>
+  <div class="panel-body">
+    <ul class="lines" id="lines"></ul>
+    <form class="details" id="details" novalidate>
+      <h3>Delivery details</h3>
+      <div class="field">
+        <label for="fName">Name</label>
+        <input id="fName" type="text" autocomplete="name" required aria-describedby="err-fName">
+        <span class="err" id="err-fName" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="fPhone">Mobile number</label>
+        <input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="10-digit number" required aria-describedby="err-fPhone">
+        <span class="err" id="err-fPhone" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="fAddress">Delivery address</label>
+        <textarea id="fAddress" rows="3" autocomplete="street-address" placeholder="House no., street, area, landmark" required aria-describedby="err-fAddress"></textarea>
+        <span class="err" id="err-fAddress" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="fDate">Delivery date</label>
+        <input id="fDate" type="date" required aria-describedby="err-fDate">
+        <span class="err" id="err-fDate" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="fNotes">Notes <span class="opt">(optional)</span></label>
+        <textarea id="fNotes" rows="2" placeholder="Message on the cake, allergies, delivery time"></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="panel-foot">
+    <div class="total-row"><span>Total</span><span id="panelTotal"></span></div>
+    <a class="btn checkout" id="checkout" target="_blank" rel="noopener">Send order on WhatsApp</a>
+  </div>
+</aside>
+
+<script>
+/* =====================================================
+   EDIT THIS BLOCK FOR EACH NEW CLIENT
+   ===================================================== */
+const CONFIG = {
+  shopName: "Namma Fresh Bakes",
+  tagline: "Small-batch bakes from a Bengaluru home kitchen",
+  whatsapp: "917022238844",   // country code + number, no + or spaces
+  area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
+  leadDays: 1                 // earliest delivery date = today + this many days
+};
+
+/* =====================================================
+   MENU: change names, prices (in rupees) and availability here
+   ===================================================== */
+const MENU = [
+  { id: 1,  name: "Custom Photo-Theme Cake (1 kg)", category: "Custom cakes", price: 1800, description: "Fondant or buttercream finish. Share your theme and message when you order.", available: true },
+  { id: 2,  name: "Black Forest Celebration Cake (1 kg)", category: "Custom cakes", price: 950, description: "Chocolate sponge, whipped cream, cherries.", available: true },
+  { id: 3,  name: "Eggless Chocolate Truffle Cake (1 kg)", category: "Eggless cakes", price: 1100, description: "Dense, rich, and fully eggless.", available: true },
+  { id: 4,  name: "Eggless Mango Cream Cake (1 kg)", category: "Eggless cakes", price: 1200, description: "Seasonal Alphonso mango. Sold out when mangoes are out of season.", available: false },
+  { id: 5,  name: "Sourdough Loaf (500 g)", category: "Sourdough and artisan breads", price: 220, description: "72-hour ferment, crackly crust. Baked fresh on weekends.", available: true },
+  { id: 6,  name: "Multigrain Seed Loaf (400 g)", category: "Sourdough and artisan breads", price: 180, description: "Sunflower, flax and pumpkin seeds.", available: true },
+  { id: 7,  name: "Butter Cookies (box of 12)", category: "Cookies", price: 260, description: "Classic, crisp, and not too sweet.", available: true },
+  { id: 8,  name: "Choco-Chip Cookies (box of 6)", category: "Cookies", price: 240, description: "Soft centre, brown-sugar edges.", available: true },
+  { id: 9,  name: "Ragi Chocolate Brownies (box of 6)", category: "Millet-based bakes", price: 320, description: "Finger millet flour, jaggery-sweetened.", available: true },
+  { id: 10, name: "Jowar Banana Muffins (box of 4)", category: "Millet-based bakes", price: 200, description: "Sorghum flour, ripe banana, a little cinnamon.", available: true }
+];
+
+/* ===== Rendering (don't edit unless you're changing how the page works) ===== */
+const rupees = n => "₹" + n.toLocaleString("en-IN");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
+
+const MAX_QTY = 20;                                        // per item
+const MENU_BY_ID = Object.fromEntries(MENU.map(i => [i.id, i]));
+const cart = {};                                           // { itemId: quantity }
+let activeCategory = "All";
+
+/* ---------- Cart state ---------- */
+function cartSummary() {
+  let count = 0, total = 0;
+  for (const id in cart) {
+    count += cart[id];
+    total += cart[id] * MENU_BY_ID[id].price;
+  }
+  return { count, total };
+}
+
+function setQty(id, qty, origin, act) {
+  qty = Math.min(qty, MAX_QTY);
+  if (qty <= 0) delete cart[id]; else cart[id] = qty;
+  onCartChange();
+  restoreFocus(id, origin, act);
+}
+
+// Runs after every cart change: refreshes every view and recalculates the total.
+function onCartChange() {
+  renderMenu();
+  renderBar();
+  renderPanel();
+}
+
+// Rebuilding the DOM drops keyboard focus, so put it back on the matching button.
+function restoreFocus(id, origin, act) {
+  const root = origin === "panel" ? $("lines") : $("menu");
+  if (act === "add") act = "inc";
+  if (!cart[id] && origin === "menu") act = "add";
+  const target = root.querySelector(`[data-id="${id}"][data-act="${act}"]:not(:disabled)`);
+  if (target) target.focus();
+  else if (origin === "panel") $("closeCart").focus();
+}
+
+/* ---------- Views ---------- */
+function stepperHTML(item) {
+  const q = cart[item.id];
+  return `<div class="stepper" role="group" aria-label="Quantity of ${esc(item.name)}">
+    <button type="button" data-act="dec" data-id="${item.id}" aria-label="Remove one ${esc(item.name)}">&minus;</button>
+    <span class="qty" aria-live="polite">${q}</span>
+    <button type="button" data-act="inc" data-id="${item.id}" aria-label="Add one ${esc(item.name)}"${q >= MAX_QTY ? " disabled" : ""}>+</button>
+  </div>`;
+}
+
+function controlHTML(item) {
+  if (!item.available) return `<button type="button" class="btn" disabled>Sold out</button>`;
+  if (!cart[item.id]) return `<button type="button" class="btn" data-act="add" data-id="${item.id}" aria-label="Add ${esc(item.name)} to cart">Add</button>`;
+  return stepperHTML(item);
+}
+
+function renderFilters() {
+  const cats = ["All", ...new Set(MENU.map(i => i.category))];
+  const box = $("filters");
+  box.innerHTML = "";
+  cats.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c;
+    if (c === activeCategory) b.classList.add("active");
+    b.onclick = () => { activeCategory = c; renderFilters(); renderMenu(); };
+    box.appendChild(b);
+  });
+}
+
+function renderMenu() {
+  const root = $("menu");
+  root.innerHTML = "";
+  const cats = [...new Set(MENU.map(i => i.category))].filter(c => activeCategory === "All" || c === activeCategory);
+  cats.forEach(cat => {
+    const section = document.createElement("section");
+    section.className = "category";
+    section.innerHTML = `<h2>${esc(cat)}</h2>`;
+    MENU.filter(i => i.category === cat).forEach(item => {
+      const row = document.createElement("div");
+      row.className = "item" + (item.available ? "" : " sold");
+      row.innerHTML = `
+        <div>
+          <h3>${esc(item.name)}</h3>
+          <p>${esc(item.description)}</p>
+          <div class="ctl">${controlHTML(item)}</div>
+        </div>
+        <div class="price">${rupees(item.price)}</div>`;
+      section.appendChild(row);
+    });
+    root.appendChild(section);
+  });
+}
+
+function renderBar() {
+  const { count, total } = cartSummary();
+  $("bar").hidden = count === 0;
+  $("barCount").textContent = count + (count === 1 ? " item" : " items");
+  $("barTotal").textContent = rupees(total);
+}
+
+function orderLink(total) {
+  const lines = Object.keys(cart).map(id => {
+    const item = MENU_BY_ID[id], q = cart[id];
+    return `• ${q} × ${item.name} — ${rupees(q * item.price)}`;
+  });
+  const d = readDetails();
+  const text = [
+    `Hi ${CONFIG.shopName}, I'd like to order:`,
+    ...lines,
+    `Total: ${rupees(total)}`,
+    "",
+    "Delivery details",
+    `Name: ${d.name}`,
+    `Phone: +91 ${d.phone}`,
+    `Address: ${d.address}`,
+    `Date: ${formatDate(d.date)}`,
+    ...(d.notes ? [`Notes: ${d.notes}`] : [])
+  ].join("\n");
+  return `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
+}
+
+function renderPanel() {
+  const ids = Object.keys(cart);
+  const { total } = cartSummary();
+  $("lines").innerHTML = ids.length
+    ? ids.map(id => {
+        const item = MENU_BY_ID[id], q = cart[id];
+        return `<li class="line">
+          <div class="line-info">
+            <strong>${esc(item.name)}</strong>
+            <span class="unit">${rupees(item.price)} each</span>
+            <button type="button" class="remove" data-act="remove" data-id="${id}" aria-label="Remove ${esc(item.name)} from cart">Remove</button>
+          </div>
+          <div class="line-side">
+            ${stepperHTML(item)}
+            <span class="line-total">${rupees(q * item.price)}</span>
+          </div>
+        </li>`;
+      }).join("")
+    : `<li class="empty">Your cart is empty. Add something from the menu.</li>`;
+  $("panelTotal").textContent = rupees(total);
+  updateCheckout();
+}
+
+function updateCheckout() {
+  const { count, total } = cartSummary();
+  const link = $("checkout");
+  if (count) { link.href = orderLink(total); link.removeAttribute("aria-disabled"); }
+  else { link.removeAttribute("href"); link.setAttribute("aria-disabled", "true"); }
+}
+
+/* ---------- Cart panel open / close ---------- */
+let lastFocus = null;
+function openCart() {
+  lastFocus = document.activeElement;
+  setMinDate();
+  renderPanel();
+  $("panel").classList.add("open");
+  $("overlay").classList.add("open");
+  document.body.classList.add("lock");
+  $("closeCart").focus();
+}
+function closeCart() {
+  $("panel").classList.remove("open");
+  $("overlay").classList.remove("open");
+  document.body.classList.remove("lock");
+  if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+
+$("openCart").onclick = openCart;
+$("closeCart").onclick = closeCart;
+$("overlay").onclick = closeCart;
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("panel").classList.contains("open")) closeCart();
+});
+
+/* ---------- Add / + / - / Remove (one delegated listener) ---------- */
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const id = Number(btn.dataset.id), act = btn.dataset.act;
+  const q = cart[id] || 0;
+  const origin = btn.closest("#panel") ? "panel" : "menu";
+  if (act === "add" || act === "inc") setQty(id, q + 1, origin, act);
+  else if (act === "dec") setQty(id, q - 1, origin, act);
+  else if (act === "remove") setQty(id, 0, origin, act);
+});
+
+/* ---------- Delivery details ---------- */
+const REQUIRED = ["fName", "fPhone", "fAddress", "fDate"];
+let attempted = false;           // show errors live only after the first send attempt
+
+function localISO(d) {
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function earliestDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + CONFIG.leadDays);
+  return localISO(d);
+}
+function setMinDate() { $("fDate").min = earliestDate(); }
+function formatDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+function cleanPhone(raw) {
+  let d = raw.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return d;
+}
+function readDetails() {
+  return {
+    name: $("fName").value.trim(),
+    phone: cleanPhone($("fPhone").value),
+    address: $("fAddress").value.trim(),
+    date: $("fDate").value,
+    notes: $("fNotes").value.trim()
+  };
+}
+function fieldError(id, d) {
+  if (id === "fName") return d.name ? "" : "Enter your name.";
+  if (id === "fPhone") return /^[6-9]\d{9}$/.test(d.phone) ? "" : "Enter a 10-digit mobile number.";
+  if (id === "fAddress") return d.address.length >= 8 ? "" : "Enter your full address with a landmark.";
+  if (id === "fDate") {
+    if (!d.date) return "Choose a delivery date.";
+    if (d.date < earliestDate()) return `Please order at least ${CONFIG.leadDays} day${CONFIG.leadDays === 1 ? "" : "s"} ahead.`;
+  }
+  return "";
+}
+// Returns the id of the first invalid field (or null). With show = true it also writes the error messages.
+function validate(show) {
+  const d = readDetails();
+  let first = null;
+  REQUIRED.forEach(id => {
+    const msg = fieldError(id, d);
+    if (msg && !first) first = id;
+    if (show) {
+      $(id).setAttribute("aria-invalid", msg ? "true" : "false");
+      $("err-" + id).textContent = msg;
+    }
+  });
+  return first;
+}
+
+["input", "change"].forEach(ev => $("details").addEventListener(ev, () => {
+  if (attempted) validate(true);
+  updateCheckout();
+}));
+$("details").addEventListener("submit", e => e.preventDefault());
+$("checkout").addEventListener("click", e => {
+  attempted = true;
+  const bad = validate(true);
+  if (bad) { e.preventDefault(); $(bad).focus(); }
+});
+
+/* ---------- Start ---------- */
+document.title = CONFIG.shopName;
+$("shopName").textContent = CONFIG.shopName;
+$("tagline").textContent = CONFIG.tagline;
+$("footer").textContent = CONFIG.area;
+renderFilters();
+onCartChange();
+</script>
+</body>
+</html>
