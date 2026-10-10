@@ -17,12 +17,14 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `leadDays` | Earliest delivery date = today + this many days |
 | `askDeliveryDate` | `false` hides the date and time fields and leaves them out of the message |
 | `timeSlots` | Choices in the preferred-time dropdown. Use `[]` to hide the time field |
+| `minOrder` | Minimum items total in rupees. Below it, checkout is blocked with a friendly message. `0` = no minimum |
+| `deliveryCharge` | Added to Delivery orders (not Pickup). `0` = free delivery |
+| `cutoffMessage` | Short note shown at the top of the cart panel. `""` hides it |
+| `colors` | `main`, `accent` and `background` brand colours (keep the background light) |
 
 Customers choose **Delivery** or **Pickup**. The address field only appears, and is only required, for Delivery. The date and time labels change to match.
 
 **MENU**: one line per item: `id`, `name`, `category`, `price` (rupees), `description`, `available`. Items with the same `category` text are grouped together. Set `available: false` to show "Sold out".
-
-**Colours**: the variables at the top of the `<style>` block (`--oxide`, `--gold`, `--ivory`, and so on).
 
 ## Test before sharing
 
@@ -39,5 +41,6 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 
 ## Notes
 
-- The cart lives in the page only, so a reload empties it.
+- The cart is saved in the customer's browser, so a refresh keeps it. Items that are removed from the menu or marked sold out are dropped when the page loads. The cart is cleared after the customer taps the WhatsApp button.
+- The page can't know if the customer actually taps Send in WhatsApp, so the confirmation message tells them to.
 - If `whatsapp` is a personal number, replace it before sharing a demo link publicly. Orders go to that number.
