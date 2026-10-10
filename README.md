@@ -15,6 +15,7 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `whatsapp` | Shop's number with country code, digits only (e.g. `919876543210`) |
 | `area` | Footer text (delivery area, lead time) |
 | `leadDays` | Earliest delivery date = today + this many days |
+| `maxDays` | Furthest date a customer can pick = today + this many days (default 60) |
 | `askDeliveryDate` | `false` hides the date and time fields and leaves them out of the message |
 | `timeSlots` | Choices in the preferred-time dropdown. Use `[]` to hide the time field |
 | `minOrder` | Minimum items total in rupees. Below it, checkout is blocked with a friendly message. `0` = no minimum |
@@ -41,6 +42,8 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 
 ## Notes
 
-- The cart is saved in the customer's browser, so a refresh keeps it. Items that are removed from the menu or marked sold out are dropped when the page loads. The cart is cleared after the customer taps the WhatsApp button.
+- The cart is saved in the customer's browser, so a refresh keeps it. Items that are removed from the menu or marked sold out are dropped when the page loads. The cart is cleared after the customer taps the WhatsApp button, and a **Restore cart** button appears for 12 seconds in case they didn't send the message.
 - The page can't know if the customer actually taps Send in WhatsApp, so the confirmation message tells them to.
+- On Android, the Back button closes the open cart instead of leaving the site.
+- Field limits: name 60, address 250, notes 300 characters. This keeps the WhatsApp link a safe length.
 - If `whatsapp` is a personal number, replace it before sharing a demo link publicly. Orders go to that number.
