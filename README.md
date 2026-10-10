@@ -21,11 +21,21 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `minOrder` | Minimum items total in rupees. Below it, checkout is blocked with a friendly message. `0` = no minimum |
 | `deliveryCharge` | Added to Delivery orders (not Pickup). `0` = free delivery |
 | `cutoffMessage` | Short note shown at the top of the cart panel. `""` hides it |
+| `supabaseUrl` | The client's Supabase Project URL. `""` = use only the built-in `MENU` (no database) |
+| `supabaseKey` | The client's Supabase **publishable** key (`sb_publishable_...`). Never the secret key |
 | `colors` | `main`, `accent` and `background` brand colours (keep the background light) |
 
 Customers choose **Delivery** or **Pickup**. The address field only appears, and is only required, for Delivery. The date and time labels change to match.
 
-**MENU**: one line per item: `id`, `name`, `category`, `price` (rupees), `description`, `available`. Items with the same `category` text are grouped together. Set `available: false` to show "Sold out".
+**MENU**: the built-in menu. When Supabase is set up, the live menu comes from the database and this list is only the fallback if it can't be reached. Each line has: one line per item: `id`, `name`, `category`, `price` (rupees), `description`, `available`. Items with the same `category` text are grouped together. Set `available: false` to show "Sold out".
+
+## Menu from Supabase (one project per client)
+
+1. Create a Supabase project for the client, run the `menu_items` table SQL, and load their menu.
+2. Create the owner's login under Authentication, Users, and switch off public sign-ups.
+3. Copy the Project URL and the publishable key into `CONFIG`.
+4. The page shows "Loading menu…" while it fetches. If the database can't be reached, it shows the built-in `MENU` and a notice that prices may be out of date.
+5. Free Supabase projects pause after a week with no activity. Fine for demos. For a paying client, use a paid plan or keep the project active.
 
 ## Test before sharing
 
