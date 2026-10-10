@@ -73,10 +73,18 @@
   .field { margin-bottom: 12px; }
   .field label { display: block; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
   .field .opt { font-weight: 400; color: var(--muted); }
-  .field input, .field textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
+  .field input, .field textarea, .field select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
   .field textarea { resize: vertical; }
-  .field input:focus-visible, .field textarea:focus-visible { border-color: var(--oxide); outline: 3px solid var(--gold); outline-offset: 1px; }
+  .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible { border-color: var(--oxide); outline: 3px solid var(--gold); outline-offset: 1px; }
   .field [aria-invalid="true"] { border-color: #b3261e; }
+  fieldset.field { margin: 0 0 12px; padding: 0; border: 0; min-width: 0; }
+  fieldset.field legend { padding: 0; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg label { position: relative; margin: 0; }
+  .seg input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .seg span { display: block; padding: 10px 12px; border: 1.5px solid var(--oxide); border-radius: 8px; text-align: center; font-weight: 600; color: var(--oxide); }
+  .seg input:checked + span { background: var(--oxide); color: var(--ivory); }
+  .seg input:focus-visible + span { outline: 3px solid var(--gold); outline-offset: 2px; }
   .err { display: block; margin-top: 3px; color: #b3261e; font-size: 0.85rem; }
   .err:empty { display: none; }
   .line { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
@@ -108,7 +116,12 @@ const CONFIG = {
   whatsapp: "919449923575",   // country code + number, no + or spaces
   area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
   leadDays: 1,                // earliest delivery date = today + this many days
-  askDeliveryDate: true       // false hides the date field (for shops that don't need one)
+  askDeliveryDate: true,      // false hides the date and time fields (for shops that don't need them)
+  timeSlots: [                // choices for preferred time; use [] to hide the time field
+    "Morning, 9 am to 12 pm",
+    "Afternoon, 12 pm to 4 pm",
+    "Evening, 4 pm to 8 pm"
+  ]
 };
 
 /* =====================================================
@@ -175,15 +188,27 @@ const MENU = [
         <input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="10-digit number" required aria-describedby="err-fPhone">
         <span class="err" id="err-fPhone" role="alert"></span>
       </div>
-      <div class="field">
+      <fieldset class="field">
+        <legend>Order type</legend>
+        <div class="seg">
+          <label><input type="radio" name="orderType" value="Delivery" checked><span>Delivery</span></label>
+          <label><input type="radio" name="orderType" value="Pickup"><span>Pickup</span></label>
+        </div>
+      </fieldset>
+      <div class="field" id="fieldAddress">
         <label for="fAddress">Delivery address</label>
         <textarea id="fAddress" rows="3" autocomplete="street-address" placeholder="House no., street, area, landmark" required aria-describedby="err-fAddress"></textarea>
         <span class="err" id="err-fAddress" role="alert"></span>
       </div>
       <div class="field" id="fieldDate">
-        <label for="fDate">Delivery date</label>
+        <label for="fDate" id="lblDate">Delivery date</label>
         <input id="fDate" type="date" required aria-describedby="err-fDate">
         <span class="err" id="err-fDate" role="alert"></span>
+      </div>
+      <div class="field" id="fieldTime">
+        <label for="fTime" id="lblTime">Preferred time</label>
+        <select id="fTime" required aria-describedby="err-fTime"><option value="">Choose a time</option></select>
+        <span class="err" id="err-fTime" role="alert"></span>
       </div>
       <div class="field">
         <label for="fNotes">Notes <span class="opt">(optional)</span></label>
@@ -313,11 +338,13 @@ function orderLink(total) {
     ...lines,
     `Total: ${rupees(total)}`,
     "",
-    "Delivery details",
+    "Order details",
     `Name: ${d.name}`,
     `Phone: +91 ${d.phone}`,
-    `Address: ${d.address}`,
-    ...(CONFIG.askDeliveryDate ? [`Date: ${formatDate(d.date)}`] : []),
+    `Type: ${d.type}`,
+    ...(d.type === "Delivery" ? [`Address: ${d.address}`] : []),
+    ...(CONFIG.askDeliveryDate ? [`${d.type} date: ${formatDate(d.date)}`] : []),
+    ...(hasTimeSlots() ? [`Time: ${d.time}`] : []),
     ...(d.notes ? [`Notes: ${d.notes}`] : [])
   ].join("\n");
   return `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
@@ -391,7 +418,25 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- Delivery details ---------- */
-const REQUIRED = ["fName", "fPhone", "fAddress", ...(CONFIG.askDeliveryDate ? ["fDate"] : [])];
+const ALL_FIELDS = ["fName", "fPhone", "fAddress", "fDate", "fTime"];
+const currentType = () => document.querySelector('input[name="orderType"]:checked').value;
+const hasTimeSlots = () => CONFIG.askDeliveryDate && Array.isArray(CONFIG.timeSlots) && CONFIG.timeSlots.length > 0;
+function requiredFields() {
+  const f = ["fName", "fPhone"];
+  if (currentType() === "Delivery") f.push("fAddress");
+  if (CONFIG.askDeliveryDate) f.push("fDate");
+  if (hasTimeSlots()) f.push("fTime");
+  return f;
+}
+// Show or hide fields to match the order type and the CONFIG switches
+function syncForm() {
+  const delivery = currentType() === "Delivery";
+  $("fieldAddress").hidden = !delivery;
+  $("fieldDate").hidden = !CONFIG.askDeliveryDate;
+  $("fieldTime").hidden = !hasTimeSlots();
+  $("lblDate").textContent = delivery ? "Delivery date" : "Pickup date";
+  $("lblTime").textContent = delivery ? "Preferred delivery time" : "Preferred pickup time";
+}
 let attempted = false;           // show errors live only after the first send attempt
 
 function localISO(d) {
@@ -421,6 +466,8 @@ function readDetails() {
     phone: cleanPhone($("fPhone").value),
     address: $("fAddress").value.trim(),
     date: $("fDate").value,
+    time: $("fTime").value,
+    type: currentType(),
     notes: $("fNotes").value.trim()
   };
 }
@@ -432,14 +479,16 @@ function fieldError(id, d) {
     if (!d.date) return "Choose a delivery date.";
     if (d.date < earliestDate()) return `Please order at least ${CONFIG.leadDays} day${CONFIG.leadDays === 1 ? "" : "s"} ahead.`;
   }
+  if (id === "fTime") return d.time ? "" : "Choose a preferred time.";
   return "";
 }
 // Returns the id of the first invalid field (or null). With show = true it also writes the error messages.
 function validate(show) {
   const d = readDetails();
+  const req = requiredFields();
   let first = null;
-  REQUIRED.forEach(id => {
-    const msg = fieldError(id, d);
+  ALL_FIELDS.forEach(id => {
+    const msg = req.includes(id) ? fieldError(id, d) : "";
     if (msg && !first) first = id;
     if (show) {
       $(id).setAttribute("aria-invalid", msg ? "true" : "false");
@@ -450,6 +499,7 @@ function validate(show) {
 }
 
 ["input", "change"].forEach(ev => $("details").addEventListener(ev, () => {
+  syncForm();
   if (attempted) validate(true);
   updateCheckout();
 }));
@@ -461,7 +511,12 @@ $("checkout").addEventListener("click", e => {
 });
 
 /* ---------- Start ---------- */
-$("fieldDate").hidden = !CONFIG.askDeliveryDate;
+(CONFIG.timeSlots || []).forEach(t => {
+  const o = document.createElement("option");
+  o.value = o.textContent = t;
+  $("fTime").appendChild(o);
+});
+syncForm();
 document.title = CONFIG.shopName;
 $("shopName").textContent = CONFIG.shopName;
 $("tagline").textContent = CONFIG.tagline;

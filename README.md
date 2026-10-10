@@ -15,7 +15,10 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `whatsapp` | Shop's number with country code, digits only (e.g. `919876543210`) |
 | `area` | Footer text (delivery area, lead time) |
 | `leadDays` | Earliest delivery date = today + this many days |
-| `askDeliveryDate` | `false` hides the date field and leaves it out of the message |
+| `askDeliveryDate` | `false` hides the date and time fields and leaves them out of the message |
+| `timeSlots` | Choices in the preferred-time dropdown. Use `[]` to hide the time field |
+
+Customers choose **Delivery** or **Pickup**. The address field only appears, and is only required, for Delivery. The date and time labels change to match.
 
 **MENU**: one line per item: `id`, `name`, `category`, `price` (rupees), `description`, `available`. Items with the same `category` text are grouped together. Set `available: false` to show "Sold out".
 
