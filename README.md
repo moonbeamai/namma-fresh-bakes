@@ -23,6 +23,8 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `cutoffMessage` | Short note shown at the top of the cart panel. `""` hides it |
 | `supabaseUrl` | The client's Supabase Project URL. `""` = use only the built-in `MENU` (no database) |
 | `supabaseKey` | The client's Supabase **publishable** key (`sb_publishable_...`). Never the secret key |
+| `saveOrders` | `true` saves each order in Supabase (needed for the orders dashboard). `false` = WhatsApp only, nothing is stored |
+| `privacyNote` | One line shown above the Place order button when orders are saved. Edit it to match what the shop really does with the data |
 | `colors` | `main`, `accent` and `background` brand colours (keep the background light) |
 
 Customers choose **Delivery** or **Pickup**. The address field only appears, and is only required, for Delivery. The date and time labels change to match.
@@ -36,6 +38,16 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 3. Copy the Project URL and the publishable key into `CONFIG`.
 4. The page shows "Loading menu…" while it fetches. If the database can't be reached, it shows the built-in `MENU` and a notice that prices may be out of date.
 5. Free Supabase projects pause after a week with no activity. Fine for demos. For a paying client, use a paid plan or keep the project active.
+
+## Saving orders (Week 3)
+
+Run `supabase-orders.sql` once per client in the Supabase SQL Editor, after replacing `PASTE-OWNER-UID` with the owner's User UID. It creates the `orders` and `shop_settings` tables, an `is_owner()` check, and a `place_order()` function.
+
+- With `saveOrders: true`, the cart button says **Place order**. It saves the order first, then shows the order number and a **Send on WhatsApp** button. The WhatsApp message includes that number.
+- If saving fails (no network, paused project, function missing), the customer is offered the old WhatsApp-only button, so no order is lost.
+- Customers cannot read or change orders. The database looks up prices itself, so a customer cannot send a lower price. It also refuses sold-out items, orders below the minimum, and more than 5 orders per phone per hour.
+- `shop_settings` holds `min_order`, `delivery_charge` and `accepting_orders`. Keep `min_order` and `delivery_charge` equal to `minOrder` and `deliveryCharge` in `index.html` CONFIG. To stop taking online orders, set `accepting_orders` to false in Table Editor.
+- Orders contain customers' names, phone numbers and addresses. Tell the client, keep the privacy note accurate, and delete old orders you no longer need.
 
 ## Owner admin page (`admin.html`)
 
