@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<style>
+  :root { --oxide: #8f2d1f; --gold: #d9a01e; --ivory: #fbf6ea; --ink: #2b1a14; --muted: #6d5a50; --line: #e6d9bd; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ivory); color: var(--ink); font: 400 1rem/1.6 "Hind", system-ui, sans-serif; }
+  h1, h2 { font-family: "Young Serif", Georgia, serif; font-weight: 400; margin: 0; }
+  header { padding: 28px 20px 24px; background: var(--oxide); color: var(--ivory); text-align: center; }
+  header h1 { font-size: clamp(1.7rem, 6vw, 2.4rem); }
+  header p { margin: 6px 0 0; color: #f1dcc0; }
+  .kolam { height: 14px; background: radial-gradient(circle, var(--gold) 3px, transparent 3.5px) 0 0 / 22px 14px repeat-x; }
+  main { max-width: 680px; margin: 0 auto; padding: 20px 18px 56px; }
+  h2 { margin-top: 26px; padding-bottom: 4px; border-bottom: 2px dotted var(--gold); font-size: 1.25rem; color: var(--oxide); }
+  p, ul { margin: 10px 0 0; }
+  ul { padding-left: 1.2rem; }
+  li { margin-top: 4px; }
+  a { color: var(--oxide); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 0.92rem; }
+</style>
+</head>
+<body>
+<script>
+/* =====================================================
+   EDIT THIS BLOCK FOR EACH NEW CLIENT
+   Keep retentionDays and unfinishedDays equal to the numbers in
+   supabase-retention.sql, so this page tells customers the truth.
+   ===================================================== */
+const CONFIG = {
+  shopName: "Namma Fresh Bakes",
+  whatsapp: "919449923575",      // the shop's number, country code and digits only
+  retentionDays: 90,             // finished orders are deleted after this many days
+  unfinishedDays: 180,           // any order is deleted after this many days
+  updated: "October 2026",
+  siteUrl: "./"                  // link back to the menu page
+};
+</script>
+
+<header>
+  <h1>Privacy</h1>
+  <p data-k="shopName"></p>
+</header>
+<div class="kolam" aria-hidden="true"></div>
+
+<main>
+  <p>This page explains, in plain words, what <span data-k="shopName"></span> does with your details when you order on this website.</p>
+
+  <h2>What we collect</h2>
+  <p>When you place an order we save:</p>
+  <ul>
+    <li>your name and phone number</li>
+    <li>your delivery address (only if you choose delivery)</li>
+    <li>what you ordered, and the total</li>
+    <li>the date and time you asked for</li>
+    <li>any note you wrote</li>
+  </ul>
+
+  <h2>Why we collect it</h2>
+  <p>Only to prepare your order, deliver it or hand it over, and contact you about it. We do not use it for advertising and we do not sell it.</p>
+
+  <h2>Who can see it</h2>
+  <p>The shop owner, and anyone the shop asks to help with orders. The website's database service (Supabase) stores the information for us. If you tap "Send on WhatsApp", your order message also goes through WhatsApp, which has its own privacy rules.</p>
+
+  <h2>How long we keep it</h2>
+  <p>Finished orders (completed or cancelled) are deleted automatically after about <span data-k="retentionDays"></span> days. Any order, even one that was never finished, is deleted after about <span data-k="unfinishedDays"></span> days.</p>
+
+  <h2>Your choices</h2>
+  <p>You can ask us to show you, correct or delete your order details at any time. Message us on WhatsApp at <a id="waLink" target="_blank" rel="noopener"></a> and tell us your name and order number.</p>
+
+  <h2>Your phone and this website</h2>
+  <ul>
+    <li>Your cart is kept in your own browser so it survives a page refresh. It holds item numbers and quantities only, not your name or address.</li>
+    <li>This site has no advertising trackers.</li>
+    <li>The page loads its fonts from Google Fonts, so Google can see that your device opened the page.</li>
+  </ul>
+
+  <p class="muted">Last updated: <span data-k="updated"></span>. <a id="back" href="./">Back to the menu</a></p>
+</main>
+
+<script>
+  (function () {
+    document.title = "Privacy · " + CONFIG.shopName;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-k]"), function (el) {
+      el.textContent = String(CONFIG[el.getAttribute("data-k")]);
+    });
+    var digits = String(CONFIG.whatsapp).replace(/\D/g, "");
+    var link = document.getElementById("waLink");
+    link.href = "https://wa.me/" + digits;
+    link.textContent = digits.length === 12 && digits.slice(0, 2) === "91"
+      ? "+91 " + digits.slice(2, 7) + " " + digits.slice(7)
+      : "+" + digits;
+    document.getElementById("back").href = CONFIG.siteUrl || "./";
+  })();
+</script>
+</body>
+</html>

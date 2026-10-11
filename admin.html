@@ -94,6 +94,8 @@
   .o-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .btn.sm { padding: 7px 14px; font-size: 0.9rem; text-decoration: none; }
   a.btn.ghost { border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); }
+  select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
+  details.add .purge { padding: 0 14px 14px; }
   .msg { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; max-width: 696px; margin: 0 auto; padding: 12px 16px; border-radius: 10px; box-shadow: 0 6px 18px rgba(43, 26, 20, 0.25); font-weight: 500; cursor: pointer; }
   .msg.success { background: #e3f3e6; color: #1f5f2e; border: 1px solid #b7dcbd; }
   .msg.error { background: #fbe3df; color: #8c1c13; border: 1px solid #efb4ac; }
@@ -161,6 +163,22 @@ const CONFIG = {
       <p class="muted" id="ordersNote"></p>
       <div id="orderList"></div>
       <p><button type="button" class="btn ghost" id="refreshOrders">Refresh orders</button></p>
+      <details class="add" id="purgeBox">
+        <summary>Clear old orders</summary>
+        <div class="purge">
+          <p class="muted">Orders hold customers' names, phone numbers and addresses. Delete finished orders (completed or cancelled) you no longer need. Orders are also removed automatically if your shop's retention job is set up.</p>
+          <div class="field">
+            <label for="purgeDays">Delete finished orders older than</label>
+            <select id="purgeDays">
+              <option value="30">30 days</option>
+              <option value="60">60 days</option>
+              <option value="90" selected>90 days</option>
+              <option value="180">180 days</option>
+            </select>
+          </div>
+          <button type="button" class="btn ghost danger" id="purgeBtn">Delete old finished orders</button>
+        </div>
+      </details>
     </div>
 
     <div id="menuView" role="tabpanel" aria-labelledby="tabMenu" hidden>
@@ -706,6 +724,45 @@ const CONFIG = {
   }
   function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
   document.addEventListener("visibilitychange", function () { if (!document.hidden && currentUser) loadOrders(true); });
+
+  /* ---------- clear old finished orders ---------- */
+  var PURGE_LABEL = "Delete old finished orders";
+  var purgeArmed = false, purgeTimer;
+  function disarmPurge() { purgeArmed = false; clearTimeout(purgeTimer); $("purgeBtn").textContent = PURGE_LABEL; $("purgeBtn").disabled = false; }
+  $("purgeDays").addEventListener("change", disarmPurge);
+  $("purgeBtn").addEventListener("click", function () {
+    var btn = this;
+    var days = parseInt($("purgeDays").value, 10);
+    if (!(days >= 1)) return;
+    var cutoff = new Date(Date.now() - days * 86400000).toISOString();
+    var finished = ["completed", "cancelled"];
+    if (!purgeArmed) {
+      // first tap: count what would be deleted
+      btn.disabled = true;
+      btn.textContent = "Checking…";
+      sb.from("orders").select("id", { count: "exact", head: true }).in("status", finished).lt("created_at", cutoff).then(function (res) {
+        btn.disabled = false;
+        btn.textContent = PURGE_LABEL;
+        if (res.error) { handleError(res.error, "Couldn't check the old orders. Please try again."); return; }
+        if (!res.count) { say("No finished orders older than " + days + " days.", "success"); return; }
+        purgeArmed = true;
+        btn.textContent = "Tap again to delete " + res.count + (res.count === 1 ? " order" : " orders");
+        purgeTimer = setTimeout(disarmPurge, 8000);
+      });
+      return;
+    }
+    // second tap: delete them
+    clearTimeout(purgeTimer);
+    btn.disabled = true;
+    btn.textContent = "Deleting…";
+    sb.from("orders").delete({ count: "exact" }).in("status", finished).lt("created_at", cutoff).then(function (res) {
+      disarmPurge();
+      if (res.error) { handleError(res.error, "Couldn't delete the old orders. Please try again."); return; }
+      if (!res.count) { say("Couldn't delete. Please log out and log in again.", "error"); return; }
+      say("Deleted " + res.count + (res.count === 1 ? " old order." : " old orders."), "success");
+      loadOrders(true);
+    });
+  });
 
   /* ---------- accepting online orders on / off ---------- */
   function updateAcceptLabel() {

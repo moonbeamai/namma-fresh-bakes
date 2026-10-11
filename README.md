@@ -25,6 +25,7 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `supabaseKey` | The client's Supabase **publishable** key (`sb_publishable_...`). Never the secret key |
 | `saveOrders` | `true` saves each order in Supabase (needed for the orders dashboard). `false` = WhatsApp only, nothing is stored |
 | `privacyNote` | One line shown above the Place order button when orders are saved. Edit it to match what the shop really does with the data |
+| `privacyUrl` | Link shown after the privacy note, to the shop's privacy page. `""` = no link |
 | `colors` | `main`, `accent` and `background` brand colours (keep the background light) |
 
 Customers choose **Delivery** or **Pickup**. The address field only appears, and is only required, for Delivery. The date and time labels change to match.
@@ -61,6 +62,8 @@ One page, one login, two tabs.
 - A switch at the top turns **Accepting online orders** on or off.
 - The page checks for new orders every 30 seconds while it is open and visible, and again when the owner comes back to it. A badge on the tab and in the page title shows how many are new. It cannot send phone notifications, so the WhatsApp message from the customer is still the instant alert.
 
+**Clear old orders** (at the bottom of the Orders tab): the owner picks 30, 60, 90 or 180 days. The first tap counts the finished orders that old, and the second tap deletes them. Only completed and cancelled orders are deleted.
+
 **Menu tab**: change name, price, category and description, switch items between Available and Sold out, add new items, delete items (two taps to confirm).
 
 Setup:
@@ -69,6 +72,15 @@ Setup:
 - The owner's login is created by you in Supabase under Authentication, Users. Keep public sign-ups switched off.
 - The page asks search engines not to index it, but the link is not a secret. The login is what protects the data: only the owner can read orders or change the menu, enforced by the rules in Supabase.
 - If the owner forgets their password, reset it from Authentication, Users in the Supabase dashboard.
+
+## Privacy and keeping order data (Week 3)
+
+Saved orders hold customers' names, phone numbers and addresses, so for every client:
+
+1. Copy `privacy.html` next to `index.html` and edit its `CONFIG` block (shop name, WhatsApp number, retention days, last-updated date). `index.html` links to it from the note above the Place order button (`privacyUrl`).
+2. Turn on the **pg_cron** extension in Supabase (Database, Extensions) and run `supabase-retention.sql` once. It deletes finished orders after 90 days and any order after 180 days, every night. If you change those numbers, change `retentionDays` and `unfinishedDays` in `privacy.html` too, so the page stays true.
+3. Tell the client in plain words what is stored and for how long, and that a customer can ask them to show, correct or delete their details. The owner can delete a single order from the Done list.
+4. This is not legal advice. India's Digital Personal Data Protection Act, 2023 and its 2025 rules introduce duties around privacy notices, security and erasing data that is no longer needed, with the main duties starting in 2027. Check the current position, and what applies to the client's size, with a qualified adviser.
 
 ## Security checklist (do this for every client)
 

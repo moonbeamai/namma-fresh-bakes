@@ -110,6 +110,7 @@
   .btn:disabled { background: #b9aaa0; cursor: default; }
   .btn.ghost { border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); }
   .privacy { margin: 0 0 10px; font-size: 0.82rem; color: var(--muted); }
+  .privacy a { color: var(--oxide); font-weight: 600; }
   .confirm { flex: 1; padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; text-align: center; }
   .confirm h3 { margin-bottom: 4px; font-size: 1.35rem; color: var(--oxide); }
   .confirm p { margin: 8px 0; }
@@ -141,7 +142,7 @@
 const CONFIG = {
   shopName: "Namma Fresh Bakes",
   tagline: "Small-batch bakes from a Bengaluru home kitchen",
-  whatsapp: "919449923575",   // country code + number, no + or spaces
+  whatsapp: "917022238844",   // country code + number, no + or spaces
   area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
   leadDays: 1,                // earliest delivery date = today + this many days
   maxDays: 60,                // furthest date a customer can pick = today + this many days
@@ -162,7 +163,8 @@ const CONFIG = {
   supabaseUrl: "https://bumddoxdrdddxbwjqlhk.supabase.co",   // Project URL from Supabase. Use "" to show only the built-in MENU below
   supabaseKey: "sb_publishable_zzQ84uzQhG9KlefS3G1d8w_rC6Y7hei",  // PUBLISHABLE key only. Never paste the secret key here
   saveOrders: true,           // true = save each order in Supabase for the owner's dashboard. false = WhatsApp only, nothing saved
-  privacyNote: "We save your name, phone, address and order so the shop can prepare it. They are used only for this order."
+  privacyNote: "We save your name, phone, address and order so the shop can prepare it. They are used only for this order.",
+  privacyUrl: "privacy.html"   // page with the full privacy details ("" = no link)
 };
 
 /* =====================================================
@@ -807,7 +809,19 @@ if (CONFIG.colors) {
   if (CONFIG.colors.accent) root.setProperty("--gold", CONFIG.colors.accent);
   if (CONFIG.colors.background) root.setProperty("--ivory", CONFIG.colors.background);
 }
-if (SAVE_ORDERS && CONFIG.privacyNote) { $("privacy").textContent = CONFIG.privacyNote; $("privacy").hidden = false; }
+if (SAVE_ORDERS && CONFIG.privacyNote) {
+  const pv = $("privacy");
+  pv.textContent = CONFIG.privacyNote + " ";
+  if (CONFIG.privacyUrl) {
+    const link = document.createElement("a");
+    link.href = CONFIG.privacyUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Privacy details";
+    pv.appendChild(link);
+  }
+  pv.hidden = false;
+}
 if (CONFIG.cutoffMessage) { $("cutoff").textContent = CONFIG.cutoffMessage; $("cutoff").hidden = false; }
 (CONFIG.timeSlots || []).forEach(t => {
   const o = document.createElement("option");
