@@ -51,12 +51,23 @@ Run `supabase-orders.sql` once per client in the Supabase SQL Editor, after repl
 
 ## Owner admin page (`admin.html`)
 
-A separate page where the shop owner logs in and edits the menu from their phone: change name, price, category and description, switch items between Available and Sold out, add new items, and delete items (two taps to confirm).
+One page, one login, two tabs.
 
-- Put `admin.html` and `supabase-js.umd.js` in the same folder and repo as `index.html`. After deploying it lives at `your-site-link/admin.html`.
+**Orders tab** (opens first): the orders saved by the Place order button.
+- Filters: **To do** (new, confirmed, ready), **Today**, **Done** (completed and cancelled), **All**. Each shows a count.
+- Each order shows the number, status, customer name and phone, delivery or pickup, date and time slot, address, notes, items with line totals, delivery charge and total.
+- Status buttons: **Confirm order**, then **Mark ready**, then **Mark completed**. **Cancel order** needs a second tap to confirm. Done orders can be **Reopened** or **Deleted** (second tap to confirm).
+- **Call** and **WhatsApp** buttons for the customer. The WhatsApp message is filled in to match the order's status.
+- A switch at the top turns **Accepting online orders** on or off.
+- The page checks for new orders every 30 seconds while it is open and visible, and again when the owner comes back to it. A badge on the tab and in the page title shows how many are new. It cannot send phone notifications, so the WhatsApp message from the customer is still the instant alert.
+
+**Menu tab**: change name, price, category and description, switch items between Available and Sold out, add new items, delete items (two taps to confirm).
+
+Setup:
+- Put `admin.html` and `supabase-js.umd.js` in the same folder and repo as `index.html`. After deploying it lives at `your-site-link/admin.html`. `admin.html#menu` opens the Menu tab.
 - Fill in the same `CONFIG` fields: `shopName`, `supabaseUrl`, `supabaseKey` (publishable key only).
 - The owner's login is created by you in Supabase under Authentication, Users. Keep public sign-ups switched off.
-- The page asks search engines not to index it, but the link is not a secret. The login is what protects the menu: only logged-in users can change it, enforced by the row-level security rules in Supabase.
+- The page asks search engines not to index it, but the link is not a secret. The login is what protects the data: only the owner can read orders or change the menu, enforced by the rules in Supabase.
 - If the owner forgets their password, reset it from Authentication, Users in the Supabase dashboard.
 
 ## Security checklist (do this for every client)

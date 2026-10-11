@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Menu editor</title>
+<title>Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -67,6 +67,33 @@
   details.add summary { padding: 14px; font-weight: 600; color: var(--oxide); cursor: pointer; }
   details.add form { padding: 0 14px 14px; }
 
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button { flex: 1; padding: 12px; border: 1.5px solid var(--oxide); border-radius: 10px; background: transparent; color: var(--oxide); font: 600 1rem "Hind", sans-serif; cursor: pointer; touch-action: manipulation; }
+  .tabs button[aria-selected="true"] { background: var(--oxide); color: var(--ivory); }
+  .tabs button:focus-visible, .chip:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .badge { display: inline-block; min-width: 1.4em; padding: 0 6px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-align: center; line-height: 1.5; }
+  .st-new { background: var(--gold); color: var(--ink); }
+  .st-confirmed { background: #d6e6f7; color: #164a82; }
+  .st-ready { background: #d9efdd; color: #1f5f2e; }
+  .st-completed { background: #e6e0d4; color: #5a4d44; }
+  .st-cancelled { background: #f6d9d5; color: #8c1c13; }
+  .accept { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+  .chip { flex: none; padding: 8px 14px; border: 1.5px solid var(--oxide); border-radius: 999px; background: transparent; color: var(--oxide); font: 500 0.95rem "Hind", sans-serif; cursor: pointer; touch-action: manipulation; }
+  .chip[aria-pressed="true"] { background: var(--oxide); color: var(--ivory); }
+  .order { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .order.is-new { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(217, 160, 30, 0.35); }
+  .o-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .o-ref { font: 400 1.35rem "Young Serif", Georgia, serif; letter-spacing: 0.06em; color: var(--oxide); }
+  .o-head .muted { margin-left: auto; }
+  .order p { margin: 6px 0 0; overflow-wrap: anywhere; }
+  .o-who { font-weight: 600; }
+  .o-items { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--line); list-style: none; }
+  .o-items li, .o-sum { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; overflow-wrap: anywhere; }
+  .o-sum.total { font-weight: 600; font-size: 1.05rem; }
+  .o-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .btn.sm { padding: 7px 14px; font-size: 0.9rem; text-decoration: none; }
+  a.btn.ghost { border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); }
   .msg { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; max-width: 696px; margin: 0 auto; padding: 12px 16px; border-radius: 10px; box-shadow: 0 6px 18px rgba(43, 26, 20, 0.25); font-weight: 500; cursor: pointer; }
   .msg.success { background: #e3f3e6; color: #1f5f2e; border: 1px solid #b7dcbd; }
   .msg.error { background: #fbe3df; color: #8c1c13; border: 1px solid #efb4ac; }
@@ -87,8 +114,8 @@ const CONFIG = {
 </script>
 
 <header class="top">
-  <h1 id="title">Menu editor</h1>
-  <p>Change prices, mark items sold out, add new items.</p>
+  <h1 id="title">Admin</h1>
+  <p>See orders, change prices, mark items sold out.</p>
 </header>
 <div class="kolam" aria-hidden="true"></div>
 
@@ -120,6 +147,23 @@ const CONFIG = {
       <span class="who" id="who"></span>
       <span><a id="siteLink" href="./">View menu page</a> &nbsp; <button type="button" class="btn ghost" id="logout">Log out</button></span>
     </div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tabOrders" aria-selected="true" aria-controls="ordersView">Orders <span class="badge st-new" id="newBadge" hidden></span></button>
+      <button type="button" role="tab" id="tabMenu" aria-selected="false" aria-controls="menuView">Menu</button>
+    </div>
+
+    <div id="ordersView" role="tabpanel" aria-labelledby="tabOrders">
+      <div class="accept" id="acceptRow" hidden>
+        <input id="acceptSw" type="checkbox" class="sw" checked>
+        <label for="acceptSw" id="acceptLabel" class="sw-label">Accepting online orders</label>
+      </div>
+      <div class="chips" id="chips" role="group" aria-label="Show orders"></div>
+      <p class="muted" id="ordersNote"></p>
+      <div id="orderList"></div>
+      <p><button type="button" class="btn ghost" id="refreshOrders">Refresh orders</button></p>
+    </div>
+
+    <div id="menuView" role="tabpanel" aria-labelledby="tabMenu" hidden>
     <p class="summary" id="summary"></p>
     <div id="list"></div>
 
@@ -137,6 +181,7 @@ const CONFIG = {
       </form>
     </details>
     <datalist id="cats"></datalist>
+    </div>
   </section>
 </main>
 
@@ -152,6 +197,11 @@ const CONFIG = {
   var items = [];         // the menu rows
   var currentUser = null;
   var started = false;
+  var BASE_TITLE = "Admin";
+  var orders = [];        // the order rows
+  var knownIds = null;    // ids seen so far, to spot new orders after a refresh
+  var filter = "todo";
+  var pollTimer = null;
 
   /* ---------- small helpers ---------- */
   // Builds elements with textContent only, so menu text can never be run as HTML.
@@ -240,10 +290,18 @@ const CONFIG = {
     showView(!!user);
     if (user) {
       $("who").textContent = "Logged in as " + user.email;
-      setTimeout(loadItems, 0);              // not inside the auth callback
+      showTab(location.hash === "#menu" ? "menu" : "orders");
+      setTimeout(function () { loadItems(); loadOrders(false); loadSettings(); startPolling(); }, 0);   // not inside the auth callback
     } else {
+      stopPolling();
       items = [];
+      orders = [];
+      knownIds = null;
       $("list").textContent = "";
+      $("orderList").textContent = "";
+      $("chips").textContent = "";
+      $("newBadge").hidden = true;
+      document.title = BASE_TITLE;
       $("password").value = "";
     }
   }
@@ -433,9 +491,254 @@ const CONFIG = {
     });
   });
 
+  /* ---------- tabs ---------- */
+  function showTab(name) {
+    var onOrders = name !== "menu";
+    $("ordersView").hidden = !onOrders;
+    $("menuView").hidden = onOrders;
+    $("tabOrders").setAttribute("aria-selected", onOrders ? "true" : "false");
+    $("tabMenu").setAttribute("aria-selected", onOrders ? "false" : "true");
+    try { history.replaceState(null, "", onOrders ? location.pathname + location.search : "#menu"); } catch (e) { /* ignore */ }
+  }
+  $("tabOrders").addEventListener("click", function () { showTab("orders"); });
+  $("tabMenu").addEventListener("click", function () { showTab("menu"); });
+
+  /* ---------- orders ---------- */
+  var STATUS_LABEL = { "new": "New", confirmed: "Confirmed", ready: "Ready", completed: "Completed", cancelled: "Cancelled" };
+  var NEXT = { "new": ["confirmed", "Confirm order"], confirmed: ["ready", "Mark ready"], ready: ["completed", "Mark completed"] };
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var IST = 19800000;   // India is UTC+5:30 all year
+
+  function istISO(offsetDays) { return new Date(Date.now() + IST + (offsetDays || 0) * 86400000).toISOString().slice(0, 10); }
+  function istDayOf(iso) { var t = Date.parse(iso); return isNaN(t) ? "" : new Date(t + IST).toISOString().slice(0, 10); }
+  function fmtDay(iso) {
+    var p = String(iso).split("-");
+    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+    return isNaN(d) ? String(iso) : DAY[d.getUTCDay()] + " " + d.getUTCDate() + " " + MON[d.getUTCMonth()];
+  }
+  function fmtCreated(iso) {
+    var t = Date.parse(iso);
+    if (isNaN(t)) return "";
+    var d = new Date(t + IST), hr = d.getUTCHours(), mi = d.getUTCMinutes();
+    var ap = hr >= 12 ? "pm" : "am";
+    hr = hr % 12 || 12;
+    return d.getUTCDate() + " " + MON[d.getUTCMonth()] + ", " + hr + ":" + (mi < 10 ? "0" : "") + mi + " " + ap;
+  }
+  function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
+  function isActive(o) { return o.status === "new" || o.status === "confirmed" || o.status === "ready"; }
+  function isToday(o) { return (o.requested_date || istDayOf(o.created_at)) === istISO(0); }
+  function inFilter(o, f) {
+    if (f === "todo") return isActive(o);
+    if (f === "today") return isToday(o) && o.status !== "cancelled";
+    if (f === "done") return !isActive(o);
+    return true;
+  }
+  function sortOrders(list, f) {
+    return list.slice().sort(function (a, b) {
+      if (f === "todo") {                                  // soonest delivery first, then the oldest order
+        var da = a.requested_date || "9999", db = b.requested_date || "9999";
+        if (da !== db) return da < db ? -1 : 1;
+        return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+      }
+      return a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0;   // newest first
+    });
+  }
+
+  function twoTap(btn, armedLabel, action) {
+    var armed = false, timer, label = btn.textContent;
+    function disarm() { armed = false; clearTimeout(timer); btn.textContent = label; }
+    btn.addEventListener("click", function () {
+      if (!armed) { armed = true; btn.textContent = armedLabel; timer = setTimeout(disarm, 6000); return; }
+      clearTimeout(timer);
+      armed = false;
+      action();
+    });
+  }
+
+  function customerMessage(o) {
+    var who = "Hi " + o.customer_name + ", ";
+    var ref = "your order " + o.order_ref;
+    if (o.status === "confirmed") return who + ref + " from " + CONFIG.shopName + " is confirmed. Total " + money(o.total) + ".";
+    if (o.status === "ready") return who + ref + " is ready" + (o.order_type === "Pickup" ? " for pickup." : " and will be on its way soon.");
+    if (o.status === "completed") return who + "thank you for ordering from " + CONFIG.shopName + "!";
+    if (o.status === "cancelled") return who + "sorry, we couldn't take " + ref + ". Please message us if you'd like to order again.";
+    return who + "this is " + CONFIG.shopName + ". We have received " + ref + ".";
+  }
+
+  function orderCard(o) {
+    var phoneOk = /^[6-9][0-9]{9}$/.test(String(o.customer_phone));
+    var when = [];
+    if (o.requested_date) {
+      var tag = o.requested_date === istISO(0) ? " (today)" : o.requested_date === istISO(1) ? " (tomorrow)" : "";
+      when.push(fmtDay(o.requested_date) + tag);
+    }
+    if (o.requested_time) when.push(o.requested_time);
+    var items = Array.isArray(o.items) ? o.items : [];
+
+    var card = h("article", { class: "order" + (o.status === "new" ? " is-new" : ""), "aria-label": "Order " + o.order_ref },
+      h("div", { class: "o-head" },
+        h("span", { class: "o-ref" }, o.order_ref),
+        h("span", { class: "badge st-" + o.status }, STATUS_LABEL[o.status] || o.status),
+        h("span", { class: "muted" }, fmtCreated(o.created_at))),
+      h("p", { class: "o-who" }, o.customer_name + (phoneOk ? " · " + o.customer_phone : "")),
+      h("p", null, o.order_type + (when.length ? " · " + when.join(" · ") : "")),
+      o.address ? h("p", null, "Address: " + o.address) : null,
+      o.notes ? h("p", null, "Note: " + o.notes) : null,
+      h("ul", { class: "o-items" }, items.map(function (it) {
+        return h("li", null, h("span", null, Number(it.qty) + " × " + String(it.name)), h("span", null, money(Number(it.price) * Number(it.qty))));
+      })),
+      o.delivery_charge > 0 ? h("div", { class: "o-sum" }, h("span", null, "Items"), h("span", null, money(o.subtotal))) : null,
+      o.delivery_charge > 0 ? h("div", { class: "o-sum" }, h("span", null, "Delivery charge"), h("span", null, money(o.delivery_charge))) : null,
+      h("div", { class: "o-sum total" }, h("span", null, "Total"), h("span", null, money(o.total))));
+
+    var actions = h("div", { class: "o-actions" });
+    var next = NEXT[o.status];
+    if (next) {
+      var nb = h("button", { type: "button", class: "btn" }, next[1]);
+      nb.addEventListener("click", function () { setStatus(o, next[0], nb); });
+      actions.appendChild(nb);
+    }
+    if (phoneOk) {
+      var msg;
+      try { msg = encodeURIComponent(customerMessage(o)); } catch (e) { msg = ""; }
+      actions.appendChild(h("a", { class: "btn ghost sm", href: "tel:+91" + o.customer_phone }, "Call"));
+      actions.appendChild(h("a", { class: "btn ghost sm", href: "https://wa.me/91" + o.customer_phone + "?text=" + msg, target: "_blank", rel: "noopener" }, "WhatsApp"));
+    }
+    if (isActive(o)) {
+      var cb = h("button", { type: "button", class: "btn ghost danger sm" }, "Cancel order");
+      twoTap(cb, "Tap again to cancel", function () { setStatus(o, "cancelled", cb); });
+      actions.appendChild(cb);
+    } else {
+      var rb = h("button", { type: "button", class: "btn ghost sm" }, "Reopen");
+      rb.addEventListener("click", function () { setStatus(o, "new", rb); });
+      var db = h("button", { type: "button", class: "btn ghost danger sm" }, "Delete order");
+      twoTap(db, "Tap again to delete", function () { deleteOrder(o, db); });
+      actions.appendChild(rb);
+      actions.appendChild(db);
+    }
+    card.appendChild(actions);
+    return card;
+  }
+
+  function renderOrders() {
+    var counts = { todo: 0, today: 0, done: 0, all: orders.length };
+    orders.forEach(function (o) { ["todo", "today", "done"].forEach(function (f) { if (inFilter(o, f)) counts[f]++; }); });
+    var chips = $("chips");
+    chips.textContent = "";
+    [["todo", "To do"], ["today", "Today"], ["done", "Done"], ["all", "All"]].forEach(function (c) {
+      var b = h("button", { type: "button", class: "chip", "aria-pressed": filter === c[0] ? "true" : "false" }, c[1] + " (" + counts[c[0]] + ")");
+      b.addEventListener("click", function () { filter = c[0]; renderOrders(); });
+      chips.appendChild(b);
+    });
+    var list = $("orderList");
+    list.textContent = "";
+    var shown = sortOrders(orders.filter(function (o) { return inFilter(o, filter); }), filter);
+    if (!shown.length) {
+      var msgs = { todo: "No orders to do right now. New orders will appear here.", today: "No orders for today.", done: "No completed or cancelled orders.", all: "No orders yet." };
+      list.appendChild(h("p", { class: "empty" }, msgs[filter]));
+    }
+    shown.forEach(function (o) { list.appendChild(orderCard(o)); });
+    $("ordersNote").textContent = orders.length >= 300 ? "Showing the latest 300 orders." : "";
+    var fresh = orders.filter(function (o) { return o.status === "new"; }).length;
+    $("newBadge").hidden = !fresh;
+    $("newBadge").textContent = String(fresh);
+    document.title = (fresh ? "(" + fresh + ") " : "") + BASE_TITLE;
+  }
+
+  function loadOrders(quiet) {
+    if (!sb || !currentUser) return;
+    sb.from("orders")
+      .select("id,order_ref,created_at,status,customer_name,customer_phone,order_type,address,requested_date,requested_time,notes,items,subtotal,delivery_charge,total")
+      .order("created_at", { ascending: false })
+      .limit(300)
+      .then(function (res) {
+        if (!currentUser) return;
+        if (res.error) {
+          if (!quiet) { $("orderList").textContent = ""; handleError(res.error, "Couldn't load the orders. Please try again."); }
+          else if ((res.error.status === 401) || /jwt/i.test(String(res.error.message || ""))) handleError(res.error, "");
+          else console.error(res.error);
+          return;
+        }
+        var fresh = res.data || [];
+        if (knownIds) {
+          var added = fresh.filter(function (o) { return !knownIds[o.id] && o.status === "new"; });
+          if (added.length === 1) say("New order " + added[0].order_ref + " from " + added[0].customer_name + ".", "success");
+          else if (added.length > 1) say(added.length + " new orders.", "success");
+        }
+        knownIds = {};
+        fresh.forEach(function (o) { knownIds[o.id] = true; });
+        orders = fresh;
+        renderOrders();
+      });
+  }
+
+  function setStatus(o, status, btn) {
+    busy(btn, true);
+    sb.from("orders").update({ status: status }).eq("id", o.id).select().then(function (res) {
+      busy(btn, false);
+      if (res.error) { handleError(res.error, "Couldn't update the order. Please try again."); return; }
+      if (!res.data || !res.data.length) { say("Couldn't update the order. Please log out and log in again.", "error"); return; }
+      o.status = res.data[0].status;
+      say("Order " + o.order_ref + " is now " + (STATUS_LABEL[o.status] || o.status).toLowerCase() + ".", "success");
+      renderOrders();
+    });
+  }
+
+  function deleteOrder(o, btn) {
+    busy(btn, true);
+    sb.from("orders").delete().eq("id", o.id).select().then(function (res) {
+      busy(btn, false);
+      if (res.error) { handleError(res.error, "Couldn't delete the order. Please try again."); return; }
+      if (!res.data || !res.data.length) { say("Couldn't delete the order. Please log out and log in again.", "error"); return; }
+      orders = orders.filter(function (x) { return x.id !== o.id; });
+      if (knownIds) delete knownIds[o.id];
+      renderOrders();
+      say("Deleted order " + o.order_ref + ".", "success");
+    });
+  }
+
+  $("refreshOrders").addEventListener("click", function () { loadOrders(false); say("Orders refreshed.", "success"); });
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(function () { if (!document.hidden) loadOrders(true); }, 30000);
+  }
+  function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && currentUser) loadOrders(true); });
+
+  /* ---------- accepting online orders on / off ---------- */
+  function updateAcceptLabel() {
+    $("acceptLabel").textContent = $("acceptSw").checked ? "Accepting online orders" : "Paused: customers can't place orders";
+  }
+  function loadSettings() {
+    sb.from("shop_settings").select("accepting_orders").limit(1).then(function (res) {
+      if (res.error || !res.data || !res.data.length) { $("acceptRow").hidden = true; return; }   // not set up for this shop
+      $("acceptSw").checked = !!res.data[0].accepting_orders;
+      updateAcceptLabel();
+      $("acceptRow").hidden = false;
+    });
+  }
+  $("acceptSw").addEventListener("change", function () {
+    var want = $("acceptSw").checked;
+    $("acceptSw").disabled = true;
+    sb.from("shop_settings").update({ accepting_orders: want }).eq("id", true).select().then(function (res) {
+      $("acceptSw").disabled = false;
+      if (res.error || !res.data || !res.data.length) {
+        $("acceptSw").checked = !want;
+        if (res.error) handleError(res.error, "Couldn't change this setting. Please try again.");
+        else say("Couldn't change this setting. Please log out and log in again.", "error");
+      } else {
+        say(want ? "Online orders are on." : "Online orders are paused.", "success");
+      }
+      updateAcceptLabel();
+    });
+  });
+
   /* ---------- start ---------- */
-  document.title = CONFIG.shopName + " · Menu editor";
-  $("title").textContent = CONFIG.shopName + " · Menu editor";
+  BASE_TITLE = CONFIG.shopName + " · Admin";
+  document.title = BASE_TITLE;
+  $("title").textContent = BASE_TITLE;
   $("siteLink").href = CONFIG.siteUrl || "./";
 
   function fatal(text) { $("boot").textContent = text; $("boot").className = "panel"; }
