@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Menu editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<style>
+  :root { --oxide: #8f2d1f; --gold: #d9a01e; --ivory: #fbf6ea; --ink: #2b1a14; --muted: #6d5a50; --line: #e6d9bd; --ok: #2f7a3d; --bad: #b3261e; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; padding-bottom: 96px; background: var(--ivory); color: var(--ink); font: 400 1rem/1.5 "Hind", system-ui, sans-serif; }
+  h1, h2 { margin: 0; font-family: "Young Serif", Georgia, serif; font-weight: 400; }
+  .top { padding: 18px 16px 16px; background: var(--oxide); color: var(--ivory); }
+  .top h1 { font-size: 1.4rem; }
+  .top p { margin: 2px 0 0; color: #f1dcc0; font-size: 0.9rem; }
+  .kolam { height: 14px; background: radial-gradient(circle, var(--gold) 3px, transparent 3.5px) 0 0 / 22px 14px repeat-x; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  .panel { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .panel h2 { margin-bottom: 12px; font-size: 1.25rem; color: var(--oxide); }
+  .muted { color: var(--muted); font-size: 0.92rem; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif;
+  }
+  textarea { resize: vertical; }
+  input:focus-visible, textarea:focus-visible, .btn:focus-visible, .sw:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .pw { display: flex; gap: 8px; }
+  .row2 { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+  @media (min-width: 440px) { .row2 { grid-template-columns: 8.5rem 1fr; } }
+
+  .btn { display: inline-block; padding: 10px 18px; border: 0; border-radius: 8px; background: var(--oxide); color: var(--ivory); font: 600 0.95rem "Hind", sans-serif; cursor: pointer; touch-action: manipulation; }
+  .btn:disabled { background: #b9aaa0; cursor: default; }
+  .btn.ghost { border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); }
+  .btn.ghost:disabled { border-color: #b9aaa0; color: #b9aaa0; }
+  .btn.danger { border-color: var(--bad); color: var(--bad); }
+  .btn.wide { width: 100%; padding: 13px; }
+
+  .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 16px; }
+  .bar .who { font-size: 0.92rem; color: var(--muted); overflow-wrap: anywhere; }
+  .bar a { color: var(--oxide); font-weight: 600; }
+  .summary { margin: 0 0 4px; font-weight: 600; }
+
+  .cat { margin-top: 22px; }
+  .cat h2 { padding-bottom: 6px; border-bottom: 2px dotted var(--gold); font-size: 1.35rem; color: var(--oxide); overflow-wrap: anywhere; }
+  .item { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .item.sold { background: #f3ede2; }
+  .item.dirty { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(217, 160, 30, 0.35); }
+  .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sw-wrap { display: flex; align-items: center; gap: 10px; }
+  .sw-label { font-weight: 600; }
+  .sw { appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 48px; height: 28px; margin: 0; border-radius: 999px; background: #b9aaa0; cursor: pointer; transition: background 0.15s; }
+  .sw::after { content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+  .sw:checked { background: var(--ok); }
+  .sw:checked::after { transform: translateX(20px); }
+  .sw:disabled { opacity: 0.5; }
+  .empty { padding: 24px 0; text-align: center; color: var(--muted); }
+
+  details.add { margin-top: 26px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  details.add summary { padding: 14px; font-weight: 600; color: var(--oxide); cursor: pointer; }
+  details.add form { padding: 0 14px 14px; }
+
+  .msg { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; max-width: 696px; margin: 0 auto; padding: 12px 16px; border-radius: 10px; box-shadow: 0 6px 18px rgba(43, 26, 20, 0.25); font-weight: 500; cursor: pointer; }
+  .msg.success { background: #e3f3e6; color: #1f5f2e; border: 1px solid #b7dcbd; }
+  .msg.error { background: #fbe3df; color: #8c1c13; border: 1px solid #efb4ac; }
+  @media (prefers-reduced-motion: reduce) { .sw, .sw::after { transition: none; } }
+</style>
+</head>
+<body>
+<script>
+/* =====================================================
+   EDIT THIS BLOCK FOR EACH NEW CLIENT
+   ===================================================== */
+const CONFIG = {
+  shopName: "Namma Fresh Bakes",
+  supabaseUrl: "https://bumddoxdrdddxbwjqlhk.supabase.co",        // Project URL from Supabase
+  supabaseKey: "sb_publishable_zzQ84uzQhG9KlefS3G1d8w_rC6Y7hei",  // PUBLISHABLE key only. Never paste the secret key here
+  siteUrl: "./"                                                    // link back to the public menu page
+};
+</script>
+
+<header class="top">
+  <h1 id="title">Menu editor</h1>
+  <p>Change prices, mark items sold out, add new items.</p>
+</header>
+<div class="kolam" aria-hidden="true"></div>
+
+<main>
+  <p id="boot" class="muted" role="status">Loading…</p>
+
+  <!-- Login -->
+  <section id="loginView" class="panel" hidden>
+    <h2>Owner login</h2>
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="pw">
+          <input id="password" type="password" autocomplete="current-password">
+          <button type="button" class="btn ghost" id="showPw" aria-pressed="false">Show</button>
+        </div>
+      </div>
+      <button type="submit" class="btn wide" id="loginBtn">Log in</button>
+    </form>
+  </section>
+
+  <!-- Menu editor -->
+  <section id="appView" hidden>
+    <div class="bar">
+      <span class="who" id="who"></span>
+      <span><a id="siteLink" href="./">View menu page</a> &nbsp; <button type="button" class="btn ghost" id="logout">Log out</button></span>
+    </div>
+    <p class="summary" id="summary"></p>
+    <div id="list"></div>
+
+    <details class="add" id="addBox">
+      <summary>+ Add a new item</summary>
+      <form id="addForm" novalidate>
+        <div class="field"><label for="aName">Name</label><input id="aName" type="text" maxlength="80"></div>
+        <div class="row2">
+          <div class="field"><label for="aPrice">Price (₹)</label><input id="aPrice" type="number" inputmode="numeric" min="1" max="100000" step="1"></div>
+          <div class="field"><label for="aCat">Category</label><input id="aCat" type="text" list="cats" maxlength="40" placeholder="e.g. Cookies"></div>
+        </div>
+        <div class="field"><label for="aDesc">Description</label><textarea id="aDesc" rows="2" maxlength="200"></textarea></div>
+        <div class="field sw-wrap"><input id="aAvail" type="checkbox" class="sw" checked><label for="aAvail" class="sw-label">Available</label></div>
+        <button type="submit" class="btn wide" id="addBtn">Add item</button>
+      </form>
+    </details>
+    <datalist id="cats"></datalist>
+  </section>
+</main>
+
+<div class="msg" id="msg" role="status" aria-live="polite" hidden></div>
+
+<!-- Supabase library, pinned to an exact version -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.9"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = null;          // Supabase client
+  var items = [];         // the menu rows
+  var currentUser = null;
+  var started = false;
+
+  /* ---------- small helpers ---------- */
+  // Builds elements with textContent only, so menu text can never be run as HTML.
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    for (var k in (attrs || {})) {
+      var v = attrs[k];
+      if (k === "class") el.className = v;
+      else if (k === "value") el.value = v;
+      else if (k === "checked") el.checked = !!v;
+      else if (v === true) el.setAttribute(k, "");
+      else if (v !== false && v != null) el.setAttribute(k, v);
+    }
+    (function add(list) {
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i];
+        if (Array.isArray(c)) add(c);
+        else if (c instanceof Node) el.appendChild(c);
+        else el.appendChild(document.createTextNode(c == null ? "" : String(c)));
+      }
+    })(Array.prototype.slice.call(arguments, 2));
+    return el;
+  }
+  function field(label, input) { return h("div", { class: "field" }, h("label", { for: input.id }, label), input); }
+
+  var msgTimer;
+  function say(text, type) {
+    var box = $("msg");
+    box.textContent = text;
+    box.className = "msg " + (type || "success");
+    box.hidden = false;
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(function () { box.hidden = true; }, type === "error" ? 9000 : 4000);
+  }
+  $("msg").addEventListener("click", function () { $("msg").hidden = true; });
+
+  function busy(btn, on) {
+    if (on) { btn.dataset.label = btn.textContent; btn.textContent = "Please wait…"; btn.disabled = true; }
+    else { btn.textContent = btn.dataset.label || btn.textContent; btn.disabled = false; }
+  }
+
+  // Turn a Supabase error into a friendly message
+  function handleError(error, fallback) {
+    console.error(error);
+    var m = String((error && error.message) || "");
+    if ((error && error.status === 401) || /jwt|not authenticated/i.test(m)) {
+      say("Your login has expired. Please log in again.", "error");
+      sb.auth.signOut();
+    } else if ((error && error.code === "42501") || /row-level security|permission denied/i.test(m)) {
+      say("You don't have permission to do that. Please log in again.", "error");
+    } else if (/failed to fetch|network|load failed/i.test(m)) {
+      say("Couldn't reach the server. Check your internet connection and try again.", "error");
+    } else {
+      say(fallback, "error");
+    }
+  }
+
+  function validateFields(f) {
+    var name = String(f.name).trim(), category = String(f.category).trim(), description = String(f.description).trim();
+    var priceText = String(f.price).trim();
+    if (!name) return { error: "Enter an item name." };
+    if (name.length > 80) return { error: "The name is too long (80 letters at most)." };
+    if (!category) return { error: "Enter a category, for example Cookies." };
+    if (category.length > 40) return { error: "The category is too long (40 letters at most)." };
+    if (!/^\d+$/.test(priceText)) return { error: "Price must be a whole number of rupees, like 250." };
+    var price = Number(priceText);
+    if (price < 1) return { error: "Price must be at least ₹1." };
+    if (price > 100000) return { error: "That price looks too high. Please check it." };
+    if (description.length > 200) return { error: "The description is too long (200 letters at most)." };
+    return { value: { name: name, category: category, price: price, description: description || null } };
+  }
+
+  /* ---------- login / logout ---------- */
+  function showView(loggedIn) {
+    $("boot").hidden = true;
+    $("loginView").hidden = loggedIn;
+    $("appView").hidden = !loggedIn;
+  }
+
+  function setSession(session) {
+    var user = session ? session.user : null;
+    var same = (user ? user.id : null) === (currentUser ? currentUser.id : null);
+    if (started && same) return;            // e.g. a token refresh: nothing to redraw
+    started = true;
+    currentUser = user;
+    showView(!!user);
+    if (user) {
+      $("who").textContent = "Logged in as " + user.email;
+      setTimeout(loadItems, 0);              // not inside the auth callback
+    } else {
+      items = [];
+      $("list").textContent = "";
+      $("password").value = "";
+    }
+  }
+
+  function loginError(error) {
+    console.error(error);
+    var m = String((error && error.message) || "");
+    if (/invalid login/i.test(m)) return "Wrong email or password. Please try again.";
+    if (/failed to fetch|network|load failed/i.test(m)) return "Couldn't reach the server. Check your internet connection.";
+    return "Couldn't log in. Please try again.";
+  }
+
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("email").value.trim(), password = $("password").value;
+    if (!email || !password) { say("Enter your email and password.", "error"); return; }
+    var btn = $("loginBtn");
+    busy(btn, true);
+    sb.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+      busy(btn, false);
+      if (res.error) say(loginError(res.error), "error");
+      else $("password").value = "";
+    }, function (err) { busy(btn, false); say(loginError(err), "error"); });
+  });
+
+  $("showPw").addEventListener("click", function () {
+    var show = $("password").type === "password";
+    $("password").type = show ? "text" : "password";
+    this.textContent = show ? "Hide" : "Show";
+    this.setAttribute("aria-pressed", show ? "true" : "false");
+  });
+
+  $("logout").addEventListener("click", function () {
+    sb.auth.signOut().then(function () { say("You are logged out.", "success"); });
+  });
+
+  /* ---------- menu list ---------- */
+  function loadItems() {
+    $("list").textContent = "Loading menu…";
+    sb.from("menu_items")
+      .select("id,name,category,price,description,available,sort_order")
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true })
+      .then(function (res) {
+        if (res.error) { $("list").textContent = ""; handleError(res.error, "Couldn't load the menu. Please reload the page."); return; }
+        items = res.data || [];
+        renderList();
+      });
+  }
+
+  function updateSummary() {
+    var sold = items.filter(function (i) { return !i.available; }).length;
+    $("summary").textContent = items.length + (items.length === 1 ? " item" : " items") + (sold ? " · " + sold + " sold out" : "");
+  }
+
+  function renderList() {
+    var list = $("list");
+    list.textContent = "";
+    var cats = [];
+    items.forEach(function (i) { if (cats.indexOf(i.category) === -1) cats.push(i.category); });
+    var dl = $("cats");
+    dl.textContent = "";
+    cats.forEach(function (c) { dl.appendChild(h("option", { value: c })); });
+    updateSummary();
+    if (!items.length) { list.appendChild(h("p", { class: "empty" }, "No items yet. Add your first item below.")); return; }
+    cats.forEach(function (cat) {
+      var sec = h("section", { class: "cat" }, h("h2", null, cat));
+      items.filter(function (i) { return i.category === cat; }).forEach(function (i) { sec.appendChild(itemCard(i)); });
+      list.appendChild(sec);
+    });
+  }
+
+  function itemCard(item) {
+    var id = item.id;
+    var nameI = h("input", { type: "text", id: "n" + id, maxlength: 80, value: item.name });
+    var priceI = h("input", { type: "number", id: "p" + id, inputmode: "numeric", min: 1, max: 100000, step: 1, value: String(item.price) });
+    var catI = h("input", { type: "text", id: "c" + id, list: "cats", maxlength: 40, value: item.category });
+    var descI = h("textarea", { id: "d" + id, rows: 2, maxlength: 200, value: item.description || "" });
+    var sw = h("input", { type: "checkbox", class: "sw", id: "a" + id, checked: item.available });
+    var swLabel = h("label", { for: "a" + id, class: "sw-label" }, item.available ? "Available" : "Sold out");
+    var saveB = h("button", { type: "button", class: "btn", disabled: true }, "Save changes");
+    var delB = h("button", { type: "button", class: "btn ghost danger" }, "Delete");
+    var cancelB = h("button", { type: "button", class: "btn ghost", hidden: true }, "Cancel");
+    var card = h("article", { class: "item" + (item.available ? "" : " sold") },
+      field("Name", nameI),
+      h("div", { class: "row2" }, field("Price (₹)", priceI), field("Category", catI)),
+      field("Description", descI),
+      h("div", { class: "foot" },
+        h("div", { class: "sw-wrap" }, sw, swLabel),
+        h("div", { class: "actions" }, delB, cancelB, saveB)));
+
+    function vals() { return { name: nameI.value, price: priceI.value, category: catI.value, description: descI.value }; }
+    function isDirty() {
+      var v = vals();
+      return v.name !== item.name || v.price !== String(item.price) || v.category !== item.category || v.description !== (item.description || "");
+    }
+    card.addEventListener("input", function () {
+      var d = isDirty();
+      saveB.disabled = !d;
+      card.classList.toggle("dirty", d);
+    });
+
+    // Save name / price / category / description
+    saveB.addEventListener("click", function () {
+      var r = validateFields(vals());
+      if (r.error) { say(r.error, "error"); return; }
+      busy(saveB, true);
+      sb.from("menu_items").update(r.value).eq("id", id).select().then(function (res) {
+        busy(saveB, false);
+        if (res.error) { handleError(res.error, "Couldn't save the changes. Please try again."); return; }
+        if (!res.data || !res.data.length) { say("Couldn't save. Please log out and log in again.", "error"); return; }
+        var oldCat = item.category;
+        Object.assign(item, res.data[0]);
+        say("Saved \"" + item.name + "\".", "success");
+        if (item.category !== oldCat) renderList();
+        else card.replaceWith(itemCard(item));
+      });
+    });
+
+    // Available / Sold out switch: saves straight away
+    sw.addEventListener("change", function () {
+      var want = sw.checked;
+      sw.disabled = true;
+      sb.from("menu_items").update({ available: want }).eq("id", id).select().then(function (res) {
+        sw.disabled = false;
+        if (res.error || !res.data || !res.data.length) {
+          sw.checked = !want;
+          if (res.error) handleError(res.error, "Couldn't change availability. Please try again.");
+          else say("Couldn't change availability. Please log out and log in again.", "error");
+          return;
+        }
+        item.available = !!res.data[0].available;
+        swLabel.textContent = item.available ? "Available" : "Sold out";
+        card.classList.toggle("sold", !item.available);
+        updateSummary();
+        say("\"" + item.name + "\" is now " + (item.available ? "available" : "sold out") + ".", "success");
+      });
+    });
+
+    // Delete needs a second tap to confirm
+    var armed = false, armTimer;
+    function disarm() { armed = false; clearTimeout(armTimer); delB.textContent = "Delete"; cancelB.hidden = true; }
+    delB.addEventListener("click", function () {
+      if (!armed) {
+        armed = true;
+        delB.textContent = "Tap again to delete";
+        cancelB.hidden = false;
+        armTimer = setTimeout(disarm, 6000);
+        return;
+      }
+      clearTimeout(armTimer);
+      busy(delB, true);
+      sb.from("menu_items").delete().eq("id", id).select().then(function (res) {
+        busy(delB, false);
+        if (res.error) { disarm(); handleError(res.error, "Couldn't delete the item. Please try again."); return; }
+        if (!res.data || !res.data.length) { disarm(); say("Couldn't delete. Please log out and log in again.", "error"); return; }
+        items = items.filter(function (i) { return i.id !== id; });
+        renderList();
+        say("Deleted \"" + item.name + "\".", "success");
+      });
+    });
+    cancelB.addEventListener("click", disarm);
+    return card;
+  }
+
+  /* ---------- add a new item ---------- */
+  $("addForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var r = validateFields({ name: $("aName").value, price: $("aPrice").value, category: $("aCat").value, description: $("aDesc").value });
+    if (r.error) { say(r.error, "error"); return; }
+    var row = r.value;
+    row.available = $("aAvail").checked;
+    var max = 0;
+    items.forEach(function (i) { if (i.sort_order > max) max = i.sort_order; });
+    row.sort_order = max + 1;
+    var btn = $("addBtn");
+    busy(btn, true);
+    sb.from("menu_items").insert(row).select().then(function (res) {
+      busy(btn, false);
+      if (res.error) { handleError(res.error, "Couldn't add the item. Please try again."); return; }
+      if (!res.data || !res.data.length) { say("Couldn't add the item. Please log out and log in again.", "error"); return; }
+      items.push(res.data[0]);
+      renderList();
+      $("addForm").reset();
+      say("Added \"" + res.data[0].name + "\".", "success");
+      $("aName").focus();
+    });
+  });
+
+  /* ---------- start ---------- */
+  document.title = CONFIG.shopName + " · Menu editor";
+  $("title").textContent = CONFIG.shopName + " · Menu editor";
+  $("siteLink").href = CONFIG.siteUrl || "./";
+
+  function fatal(text) { $("boot").textContent = text; $("boot").className = "panel"; }
+  if (!window.supabase || !window.supabase.createClient) {
+    fatal("Couldn't load the login library. Check your internet connection and reload the page.");
+  } else if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) {
+    fatal("This page isn't connected to Supabase yet. Fill in supabaseUrl and supabaseKey in CONFIG.");
+  } else {
+    sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    sb.auth.onAuthStateChange(function (event, session) { setSession(session); });
+    sb.auth.getSession().then(function (res) { setSession(res.data ? res.data.session : null); },
+                              function () { setSession(null); });
+  }
+})();
+</script>
+</body>
+</html>

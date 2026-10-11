@@ -37,6 +37,16 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 4. The page shows "Loading menu…" while it fetches. If the database can't be reached, it shows the built-in `MENU` and a notice that prices may be out of date.
 5. Free Supabase projects pause after a week with no activity. Fine for demos. For a paying client, use a paid plan or keep the project active.
 
+## Owner admin page (`admin.html`)
+
+A separate page where the shop owner logs in and edits the menu from their phone: change name, price, category and description, switch items between Available and Sold out, add new items, and delete items (two taps to confirm).
+
+- Put `admin.html` in the same folder and repo as `index.html`. After deploying it lives at `your-site-link/admin.html`.
+- Fill in the same `CONFIG` fields: `shopName`, `supabaseUrl`, `supabaseKey` (publishable key only).
+- The owner's login is created by you in Supabase under Authentication, Users. Keep public sign-ups switched off.
+- The page asks search engines not to index it, but the link is not a secret. The login is what protects the menu: only logged-in users can change it, enforced by the row-level security rules in Supabase.
+- If the owner forgets their password, reset it from Authentication, Users in the Supabase dashboard.
+
 ## Test before sharing
 
 1. Open `index.html` in a browser (phone view too).
