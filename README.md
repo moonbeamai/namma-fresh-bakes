@@ -41,11 +41,56 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 
 A separate page where the shop owner logs in and edits the menu from their phone: change name, price, category and description, switch items between Available and Sold out, add new items, and delete items (two taps to confirm).
 
-- Put `admin.html` in the same folder and repo as `index.html`. After deploying it lives at `your-site-link/admin.html`.
+- Put `admin.html` and `supabase-js.umd.js` in the same folder and repo as `index.html`. After deploying it lives at `your-site-link/admin.html`.
 - Fill in the same `CONFIG` fields: `shopName`, `supabaseUrl`, `supabaseKey` (publishable key only).
 - The owner's login is created by you in Supabase under Authentication, Users. Keep public sign-ups switched off.
 - The page asks search engines not to index it, but the link is not a secret. The login is what protects the menu: only logged-in users can change it, enforced by the row-level security rules in Supabase.
 - If the owner forgets their password, reset it from Authentication, Users in the Supabase dashboard.
+
+## Security checklist (do this for every client)
+
+**Files**
+- `supabase-js.umd.js` is the Supabase library, version 2.110.9 (MIT licence), copied unchanged from npm (SHA-256 `0ced6b6a809cebaf1869c87cb5e690fddf7235d2a7cc5a951d06b54d0832bf9b`). It sits next to `admin.html` and is served from your own site. To update it, download a newer release from npm, replace the file, and test the login again.
+- `_headers` is read by Netlify. It stops the site being shown inside another page and sets safe browser defaults. It must be named exactly `_headers`, with no `.txt` on the end.
+
+**In the Supabase dashboard**
+1. Authentication, Sign In / Providers: **Allow new users to sign up** is OFF.
+2. The same page: **Allow anonymous sign-ins** is OFF. Anonymous users count as "logged in" to the database rules.
+3. Set a minimum password length of 10 or more, and use a long password for the owner.
+4. Optional: turn on multi-factor authentication for the owner.
+5. Only the **publishable** key is ever used in the HTML files. The secret key never leaves the Supabase dashboard.
+
+**Lock editing to the owner and limit what can be saved.** In Authentication, Users, copy the owner's **User UID**. In the SQL Editor, run this with the UID pasted over each `PASTE-OWNER-UID`:
+
+```sql
+drop policy "Logged-in admin can add items" on menu_items;
+drop policy "Logged-in admin can edit items" on menu_items;
+drop policy "Logged-in admin can delete items" on menu_items;
+
+create policy "Owner can add items" on menu_items for insert to authenticated
+  with check ((select auth.uid()) = 'PASTE-OWNER-UID'::uuid);
+create policy "Owner can edit items" on menu_items for update to authenticated
+  using ((select auth.uid()) = 'PASTE-OWNER-UID'::uuid)
+  with check ((select auth.uid()) = 'PASTE-OWNER-UID'::uuid);
+create policy "Owner can delete items" on menu_items for delete to authenticated
+  using ((select auth.uid()) = 'PASTE-OWNER-UID'::uuid);
+
+alter table menu_items
+  add constraint price_range check (price between 1 and 100000),
+  add constraint name_length check (char_length(name) between 1 and 80),
+  add constraint category_length check (char_length(category) between 1 and 40),
+  add constraint description_length check (description is null or char_length(description) <= 200);
+```
+
+**Test that a stranger cannot write.** Open the public site, press F12, choose Console, and paste:
+
+```js
+fetch(CONFIG.supabaseUrl + "/rest/v1/menu_items", {method: "POST", headers: {apikey: CONFIG.supabaseKey, "Content-Type": "application/json"}, body: JSON.stringify({name: "RLS TEST delete me", category: "Test", price: 1})}).then(r => r.json()).then(console.log)
+```
+
+The answer must contain `42501` (a row-level security error). If it returns a new row instead, the rules are wrong. Delete that test row in Table Editor and fix the policies.
+
+**Remember:** the WhatsApp message is typed by the customer's own phone, so its prices and totals are not verified. The shop should check totals against its own menu.
 
 ## Test before sharing
 

@@ -142,8 +142,8 @@ const CONFIG = {
 
 <div class="msg" id="msg" role="status" aria-live="polite" hidden></div>
 
-<!-- Supabase library, pinned to an exact version -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.9"></script>
+<!-- Supabase library v2.110.9 (MIT licence), copied unchanged from npm and served from this site, so no outside server can change the code that handles the owner's login -->
+<script src="supabase-js.umd.js"></script>
 <script>
 (function () {
   "use strict";
@@ -440,7 +440,7 @@ const CONFIG = {
 
   function fatal(text) { $("boot").textContent = text; $("boot").className = "panel"; }
   if (!window.supabase || !window.supabase.createClient) {
-    fatal("Couldn't load the login library. Check your internet connection and reload the page.");
+    fatal("Couldn't load the login library. Check that supabase-js.umd.js is uploaded next to admin.html, then reload the page.");
   } else if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) {
     fatal("This page isn't connected to Supabase yet. Fill in supabaseUrl and supabaseKey in CONFIG.");
   } else {
