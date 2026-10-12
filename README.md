@@ -48,7 +48,7 @@ Run `supabase-orders.sql` once per client in the Supabase SQL Editor, after repl
 - With `saveOrders: true`, the cart button says **Place order**. It saves the order first, then shows the order number and a **Send on WhatsApp** button. The WhatsApp message includes that number.
 - If saving fails (no network, paused project, function missing), the customer is offered the old WhatsApp-only button, so no order is lost.
 - Customers cannot read or change orders. The database looks up prices itself, so a customer cannot send a lower price. It also refuses sold-out items, orders below the minimum, and more than 5 orders per phone per hour.
-- `shop_settings` holds `min_order`, `delivery_charge` and `accepting_orders`. Keep `min_order` and `delivery_charge` equal to `minOrder` and `deliveryCharge` in `index.html` CONFIG. To stop taking online orders, set `accepting_orders` to false in Table Editor.
+- `shop_settings` holds the shop's rules: `min_order`, `delivery_charge`, `accepting_orders` and the payment settings below. The page reads them from there, so changing a value in Table Editor changes the shop straight away. `minOrder` and `deliveryCharge` in `index.html` CONFIG are only used if the settings can't be read. The owner can also pause orders from the admin page.
 - **Pausing:** when the owner switches **Accepting online orders** off in the admin, customers see the `pausedMessage` banner at the top of the page as soon as it opens (and again if they tap Add after the switch changed). Every Add button becomes "Not taking orders", and there is no Place order button and no WhatsApp button, so there is no way to order. The page re-checks when it opens, when the cart is opened, when something is added after 30 seconds, and when the customer returns to the tab. The database also refuses orders while paused. This switch only exists for shops that save orders (`saveOrders: true`).
 - Orders contain customers' names, phone numbers and addresses. Tell the client, keep the privacy note accurate, and delete old orders you no longer need.
 
@@ -74,6 +74,30 @@ Setup:
 - The owner's login is created by you in Supabase under Authentication, Users. Keep public sign-ups switched off.
 - The page asks search engines not to index it, but the link is not a secret. The login is what protects the data: only the owner can read orders or change the menu, enforced by the rules in Supabase.
 - If the owner forgets their password, reset it from Authentication, Users in the Supabase dashboard.
+
+## Payments (Week 4)
+
+After the customer taps **Place order** the page shows a payment choice, and the order is saved only when they confirm it:
+- **Delivery orders:** UPI or Cash on delivery.
+- **Pickup orders:** UPI or Pay at pickup.
+- **UPI:** the confirmation shows a **Pay with UPI** button that opens the customer's UPI app with the shop's UPI ID, the exact total and the order number filled in, plus the UPI ID with a Copy button for phones that can't open the link. The customer then sends the order on WhatsApp with the payment screenshot.
+- **The page cannot see whether a UPI payment went through.** Orders start as `unpaid`. The owner checks their UPI app, matches the order number in the payment note, and marks the order paid. Treat UPI orders as unconfirmed until then.
+
+Set these in Table Editor, `shop_settings` (one row):
+
+| Column | What it does |
+| --- | --- |
+| `upi_id` | The shop's UPI ID, like `shopname@okaxis`. UPI is not offered until this is set |
+| `accept_upi`, `accept_cod`, `accept_pay_at_pickup` | Switch each payment method on or off |
+| `cod_max_total` | Largest order total allowed for cash on delivery. `0` = no limit. Default 1500 |
+| `free_delivery_above` | Items total at or above this get free delivery. `0` = never free. Default 1000 |
+| `min_order`, `delivery_charge` | As before |
+
+The database checks all of this again when an order is placed, so the page can't be tricked into a method or price that isn't allowed. Orders store `payment_method` (`UPI`, `COD` or `PAY_AT_PICKUP`), `payment_status` (`unpaid`, `paid` or `refunded`) and `paid_at`. Orders from before payments existed have no payment method.
+
+To upgrade a shop that already has the Week 3 database, run the new `supabase-orders.sql` again. It adds the new columns and leaves existing orders alone.
+
+Use a business UPI ID or QR where the shop has one. Cash on delivery for large custom orders carries a risk of refusal, which the COD limit is there to reduce.
 
 ## Privacy and keeping order data (Week 3)
 

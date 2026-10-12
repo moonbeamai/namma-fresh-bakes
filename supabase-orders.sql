@@ -1,8 +1,9 @@
 -- =====================================================================
--- WEEK 3: SAVING ORDERS IN SUPABASE
+-- WEEK 3 + 4: SAVING ORDERS AND PAYMENTS IN SUPABASE
 --
 -- Run this ONCE in the Supabase SQL Editor, after the menu_items setup.
--- It is safe to run again: it will not duplicate anything.
+-- It is safe to run again, and safe to run on a shop that already has the
+-- Week 3 version: it adds the payment columns without touching existing orders.
 --
 -- BEFORE YOU RUN IT: replace PASTE-OWNER-UID in step 1 below (one place only)
 -- with the owner's User UID from Authentication > Users. Keep the quotes
@@ -15,6 +16,13 @@
 --     menu_items (so a customer cannot change a price), and refuses sold-out
 --     items, orders below the minimum, and too many orders in an hour.
 --   * Only the owner (is_owner) can read and update orders.
+--   * Payments: customers choose UPI, cash on delivery (delivery orders only)
+--     or pay at pickup (pickup orders only). The function checks the choice,
+--     applies free delivery and the cash-on-delivery limit itself.
+--
+-- AFTER RUNNING IT, set the shop's UPI ID once (Table Editor > shop_settings,
+-- column upi_id) or run:   update shop_settings set upi_id = 'yourshop@upi';
+-- Without a UPI ID, UPI is not offered to customers.
 -- =====================================================================
 
 
@@ -24,7 +32,7 @@ returns boolean
 language sql
 stable
 as $$
-  select coalesce((select auth.uid()) = 'PASTE-OWNER-UID'::uuid, false)
+  select coalesce((select auth.uid()) = '99b05c9c-8039-4509-82a0-b15cee92164d'::uuid, false)
 $$;
 
 
@@ -40,6 +48,7 @@ create table if not exists shop_settings (
 insert into shop_settings default values on conflict do nothing;
 
 alter table shop_settings enable row level security;
+revoke insert, update, delete on shop_settings from anon;   -- the public can only read
 
 drop policy if exists "Anyone can read shop settings" on shop_settings;
 create policy "Anyone can read shop settings"
@@ -94,6 +103,27 @@ create policy "Owner can delete orders"
   on orders for delete to authenticated using ((select is_owner()));
 
 
+-- 3b. Payments (Week 4). Each line is safe to run again.
+alter table shop_settings
+  add column if not exists free_delivery_above integer not null default 1000 check (free_delivery_above >= 0),
+  add column if not exists cod_max_total integer not null default 1500 check (cod_max_total >= 0),
+  add column if not exists accept_upi boolean not null default true,
+  add column if not exists accept_cod boolean not null default true,
+  add column if not exists accept_pay_at_pickup boolean not null default true,
+  add column if not exists upi_id text
+    check (upi_id is null or upi_id ~ '^[A-Za-z0-9._-]{2,64}@[A-Za-z0-9]{2,32}$');
+-- free_delivery_above: items total at or above this get free delivery (0 = never free)
+-- cod_max_total:       largest order total allowed for cash on delivery (0 = no limit)
+
+alter table orders
+  add column if not exists payment_method text
+    check (payment_method is null or payment_method in ('UPI', 'COD', 'PAY_AT_PICKUP')),
+  add column if not exists payment_status text not null default 'unpaid'
+    check (payment_status in ('unpaid', 'paid', 'refunded')),
+  add column if not exists paid_at timestamptz;
+-- orders placed before this update have payment_method empty
+
+
 -- 4. place_order(): the only way a customer creates an order
 create or replace function place_order(p jsonb)
 returns jsonb
@@ -110,6 +140,7 @@ declare
   v_address  text;
   v_time     text;
   v_notes    text;
+  v_payment  text;
   v_date     date;
   v_today    date := (now() at time zone 'Asia/Kolkata')::date;
   v_in       jsonb;
@@ -120,6 +151,7 @@ declare
   v_items    jsonb := '[]'::jsonb;
   v_subtotal integer := 0;
   v_delivery integer := 0;
+  v_total    integer;
   v_existing orders%rowtype;
   v_new      orders%rowtype;
 begin
@@ -137,7 +169,8 @@ begin
   if found then
     return jsonb_build_object(
       'order_ref', v_existing.order_ref, 'subtotal', v_existing.subtotal,
-      'delivery_charge', v_existing.delivery_charge, 'total', v_existing.total);
+      'delivery_charge', v_existing.delivery_charge, 'total', v_existing.total,
+      'payment_method', v_existing.payment_method, 'payment_status', v_existing.payment_status);
   end if;
 
   select * into s from shop_settings limit 1;
@@ -151,6 +184,7 @@ begin
   v_address := nullif(btrim(coalesce(p->>'address', '')), '');
   v_time    := nullif(btrim(coalesce(p->>'time', '')), '');
   v_notes   := nullif(btrim(coalesce(p->>'notes', '')), '');
+  v_payment := p->>'payment';
   v_in      := p->'items';
 
   if char_length(v_name) not between 1 and 60 then raise exception 'INVALID_NAME'; end if;
@@ -205,7 +239,31 @@ begin
   end loop;
 
   if v_subtotal < s.min_order then raise exception 'BELOW_MINIMUM'; end if;
-  if v_type = 'Delivery' then v_delivery := s.delivery_charge; end if;
+
+  -- Delivery charge, free above the threshold
+  if v_type = 'Delivery' then
+    if s.free_delivery_above > 0 and v_subtotal >= s.free_delivery_above then
+      v_delivery := 0;
+    else
+      v_delivery := s.delivery_charge;
+    end if;
+  end if;
+  v_total := v_subtotal + v_delivery;
+
+  -- Payment method: must be allowed for this order type and switched on
+  if v_payment is null or v_payment not in ('UPI', 'COD', 'PAY_AT_PICKUP') then
+    raise exception 'INVALID_PAYMENT';
+  end if;
+  if v_payment = 'UPI' and (not s.accept_upi or s.upi_id is null) then
+    raise exception 'INVALID_PAYMENT';
+  end if;
+  if v_payment = 'COD' then
+    if v_type <> 'Delivery' or not s.accept_cod then raise exception 'INVALID_PAYMENT'; end if;
+    if s.cod_max_total > 0 and v_total > s.cod_max_total then raise exception 'COD_LIMIT'; end if;
+  end if;
+  if v_payment = 'PAY_AT_PICKUP' and (v_type <> 'Pickup' or not s.accept_pay_at_pickup) then
+    raise exception 'INVALID_PAYMENT';
+  end if;
 
   -- Simple limits against spam: 5 orders per phone per hour, 100 orders per hour in total
   if (select count(*) from orders where customer_phone = v_phone and created_at > now() - interval '1 hour') >= 5
@@ -214,14 +272,15 @@ begin
   end if;
 
   insert into orders (order_ref, client_token, customer_name, customer_phone, order_type, address,
-                      requested_date, requested_time, notes, items, subtotal, delivery_charge, total)
+                      requested_date, requested_time, notes, items, subtotal, delivery_charge, total, payment_method)
   values (upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)), v_token, v_name, v_phone, v_type, v_address,
-          v_date, v_time, v_notes, v_items, v_subtotal, v_delivery, v_subtotal + v_delivery)
+          v_date, v_time, v_notes, v_items, v_subtotal, v_delivery, v_total, v_payment)
   returning * into v_new;
 
   return jsonb_build_object(
     'order_ref', v_new.order_ref, 'subtotal', v_new.subtotal,
-    'delivery_charge', v_new.delivery_charge, 'total', v_new.total);
+    'delivery_charge', v_new.delivery_charge, 'total', v_new.total,
+    'payment_method', v_new.payment_method, 'payment_status', v_new.payment_status);
 end;
 $$;
 

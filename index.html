@@ -119,6 +119,21 @@
   .confirm-tick { width: 48px; height: 48px; margin: 0 auto 8px !important; border-radius: 50%; background: #2f7a3d; color: #fff; font-size: 1.6rem; line-height: 48px; }
   .ref { font: 400 2.1rem "Young Serif", Georgia, serif; letter-spacing: 0.08em; color: var(--oxide); }
   .paused-note { margin: 0 0 16px; padding: 12px 14px; border-left: 4px solid var(--oxide); border-radius: 6px; background: #f8e6c2; font-weight: 600; }
+  .free-hint { margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; color: #2f7a3d; }
+  .btn.sm { padding: 6px 12px; font-size: 0.85rem; }
+  .paystep { flex: 1; padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; }
+  .paystep h3 { font-size: 1.3rem; color: var(--oxide); }
+  .pay-total { margin: 4px 0 6px; color: var(--muted); }
+  .pay-opt { display: flex; align-items: flex-start; gap: 12px; margin-top: 10px; padding: 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; }
+  .pay-opt input { margin-top: 5px; accent-color: var(--oxide); }
+  .pay-opt strong { display: block; }
+  .pay-opt .hint { color: var(--muted); font-size: 0.9rem; }
+  .pay-opt.disabled { opacity: 0.55; cursor: default; }
+  .pay-opt:has(input:checked) { border-color: var(--oxide); box-shadow: 0 0 0 2px rgba(143, 45, 31, 0.2); }
+  .paystep .checkout { margin-top: 12px; }
+  .confirm-pay { font-weight: 600; }
+  .upi-box { margin: 8px 0; padding: 12px; border: 1px dashed var(--oxide); border-radius: 10px; background: #fff; }
+  .upi-box p { margin: 8px 0 0; }
   .status { padding: 36px 0; text-align: center; color: var(--muted); }
   .menu-note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--oxide); background: #f8e6c2; font-size: 0.92rem; }
   button, .btn, .filters button { touch-action: manipulation; }   /* no double-tap zoom on + and - */
@@ -144,7 +159,7 @@
 const CONFIG = {
   shopName: "Namma Fresh Bakes",
   tagline: "Small-batch bakes from a Bengaluru home kitchen",
-  whatsapp: "919449923575",   // country code + number, no + or spaces
+  whatsapp: "917022238844",   // country code + number, no + or spaces
   area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
   leadDays: 1,                // earliest delivery date = today + this many days
   maxDays: 60,                // furthest date a customer can pick = today + this many days
@@ -154,8 +169,8 @@ const CONFIG = {
     "Afternoon, 12 pm to 4 pm",
     "Evening, 4 pm to 8 pm"
   ],
-  minOrder: 300,              // minimum items total in rupees (0 = no minimum)
-  deliveryCharge: 50,         // added to Delivery orders, in rupees (0 = free delivery)
+  minOrder: 300,              // minimum items total in rupees (0 = no minimum). With Supabase, shop_settings is used instead
+  deliveryCharge: 50,         // added to Delivery orders, in rupees (0 = free). With Supabase, shop_settings is used instead
   cutoffMessage: "Order before 6 pm for next-day delivery.",   // shown in the cart panel; "" hides it
   colors: {                   // brand colours (keep the background light)
     main: "#8f2d1f",          // header, buttons, headings
@@ -270,6 +285,7 @@ const MENU = [
     </form>
   </div>
   <div class="panel-foot" id="panelFoot">
+    <p class="free-hint" id="freeHint" hidden></p>
     <div class="sum-row"><span>Items</span><span id="panelSub"></span></div>
     <div class="sum-row" id="deliveryRow" hidden><span>Delivery charge</span><span id="panelDelivery"></span></div>
     <div class="total-row"><span>Total</span><span id="panelTotal"></span></div>
@@ -278,12 +294,25 @@ const MENU = [
     <button type="button" class="btn checkout" id="placeBtn" hidden>Place order</button>
     <a class="btn checkout" id="checkout" target="_blank" rel="noopener">Send order on WhatsApp</a>
   </div>
+  <div class="paystep" id="payStep" hidden>
+    <h3>How would you like to pay?</h3>
+    <p class="pay-total" id="payTotal"></p>
+    <div id="payOptions" role="radiogroup" aria-label="Payment method"></div>
+    <p class="notice" id="payNotice" role="alert" hidden></p>
+    <button type="button" class="btn checkout" id="payConfirm" disabled>Confirm order</button>
+    <button type="button" class="btn ghost checkout" id="payBack">Back</button>
+  </div>
   <div class="confirm" id="confirm" hidden>
     <p class="confirm-tick" aria-hidden="true">&#10003;</p>
     <h3>Your order is saved</h3>
     <p>Order number</p>
     <p class="ref" id="confirmRef"></p>
     <p id="confirmSummary"></p>
+    <p class="confirm-pay" id="confirmPay" hidden></p>
+    <div class="upi-box" id="upiBox" hidden>
+      <a class="btn checkout" id="upiPay">Pay with UPI</a>
+      <p>UPI ID: <strong id="upiIdText"></strong> <button type="button" class="btn ghost sm" id="copyUpi">Copy</button></p>
+    </div>
     <p>The shop can see your order. Tap below to also send it on WhatsApp, so they notice it straight away.</p>
     <a class="btn checkout" id="waConfirm" target="_blank" rel="noopener">Send on WhatsApp</a>
     <button type="button" class="btn ghost checkout" id="confirmDone">Done</button>
@@ -331,8 +360,10 @@ function cartSummary() {
 // Items total, delivery charge (Delivery orders only) and the grand total
 function orderTotals() {
   const { count, total: subtotal } = cartSummary();
-  const delivery = count && currentType() === "Delivery" ? (CONFIG.deliveryCharge || 0) : 0;
-  return { count, subtotal, delivery, total: subtotal + delivery };
+  const isDelivery = currentType() === "Delivery";
+  let delivery = 0;
+  if (count && isDelivery) delivery = effFreeAbove() > 0 && subtotal >= effFreeAbove() ? 0 : effDeliveryCharge();   // free delivery above the threshold
+  return { count, subtotal, delivery, total: subtotal + delivery, isDelivery };
 }
 
 function setQty(id, qty, origin, act) {
@@ -423,7 +454,8 @@ function renderBar() {
   $("barTotal").textContent = rupees(total);
 }
 
-function orderLink(t, ref) {
+const PAY_TEXT = { UPI: "UPI (I'll send the payment screenshot)", COD: "Cash on delivery", PAY_AT_PICKUP: "Pay at pickup" };
+function orderLink(t, ref, payment) {
   const lines = Object.keys(cart).map(id => {
     const item = MENU_BY_ID[id], q = cart[id];
     return `• ${q} × ${item.name} — ${rupees(q * item.price)}`;
@@ -433,8 +465,9 @@ function orderLink(t, ref) {
     `Hi ${CONFIG.shopName}, I'd like to order:`,
     ...(ref ? ["Order no. " + ref] : []),
     ...lines,
-    ...(t.delivery ? [`Subtotal: ${rupees(t.subtotal)}`, `Delivery charge: ${rupees(t.delivery)}`] : []),
+    ...(d.type === "Delivery" ? [`Subtotal: ${rupees(t.subtotal)}`, t.delivery > 0 ? `Delivery charge: ${rupees(t.delivery)}` : "Delivery: Free"] : []),
     `Total: ${rupees(t.total)}`,
+    ...(payment && PAY_TEXT[payment] ? ["Payment: " + PAY_TEXT[payment]] : []),
     "",
     "Order details",
     `Name: ${d.name}`,
@@ -476,9 +509,13 @@ function renderPanel() {
 function renderTotals() {
   const t = orderTotals();
   $("panelSub").textContent = rupees(t.subtotal);
-  $("deliveryRow").hidden = !t.delivery;
-  $("panelDelivery").textContent = rupees(t.delivery);
+  $("deliveryRow").hidden = !(t.count && t.isDelivery);
+  $("panelDelivery").textContent = t.delivery > 0 ? rupees(t.delivery) : "Free";
   $("panelTotal").textContent = rupees(t.total);
+  const need = effFreeAbove() - t.subtotal;
+  const hint = $("freeHint");
+  hint.hidden = !(t.count && t.isDelivery && effFreeAbove() > 0 && need > 0);
+  if (!hint.hidden) hint.textContent = `Add ${rupees(need)} more for free delivery.`;
 }
 
 function updateCheckout() {
@@ -492,7 +529,7 @@ function updateCheckout() {
     link.removeAttribute("href");
     return;
   }
-  const min = CONFIG.minOrder || 0;
+  const min = effMin();
   const short = t.count > 0 && t.subtotal < min;
   const ready = t.count > 0 && !short;
   if (short) { note.textContent = `Minimum order is ${rupees(min)}. Add ${rupees(min - t.subtotal)} more to continue.`; note.hidden = false; }
@@ -503,7 +540,7 @@ function updateCheckout() {
   link.hidden = !viaWhatsApp;
   btn.hidden = viaWhatsApp;
   btn.disabled = placing || !ready;
-  if (ready) { link.href = orderLink(t); link.removeAttribute("aria-disabled"); }
+  if (ready) { link.href = orderLink(t, null, fallbackMode ? lastPayment : null); link.removeAttribute("aria-disabled"); }
   else { link.removeAttribute("href"); link.setAttribute("aria-disabled", "true"); }
 }
 
@@ -684,6 +721,27 @@ const SAVE_ORDERS = CONFIG.saveOrders !== false && !!CONFIG.supabaseUrl && !!CON
 // when the cart is opened, when something is added to the cart, and when the customer comes back to the tab.
 let ordersOpen = true;
 let ordersCheckedAt = 0;
+let S = null;       // the shop's settings from Supabase (null until they have been read)
+const num = (v, fallback) => (typeof v === "number" && isFinite(v) ? v : fallback);
+const effMin = () => (S ? S.minOrder : (CONFIG.minOrder || 0));
+const effDeliveryCharge = () => (S ? S.deliveryCharge : (CONFIG.deliveryCharge || 0));
+const effFreeAbove = () => (S ? S.freeAbove : 0);
+const paymentsOn = () => !!(S && S.payments);   // false on a database that has not been updated for payments yet
+
+function applySettingsRow(r) {
+  ordersOpen = r.accepting_orders !== false;
+  S = {
+    minOrder: num(r.min_order, CONFIG.minOrder || 0),
+    deliveryCharge: num(r.delivery_charge, CONFIG.deliveryCharge || 0),
+    freeAbove: num(r.free_delivery_above, 0),
+    codMax: num(r.cod_max_total, 0),
+    upi: r.accept_upi === true && !!r.upi_id,
+    cod: r.accept_cod === true,
+    pickup: r.accept_pay_at_pickup === true,
+    upiId: r.upi_id || "",
+    payments: r.accept_upi !== undefined
+  };
+}
 const ordersCheckIsStale = () => SAVE_ORDERS && Date.now() - ordersCheckedAt > 30000;
 
 async function fetchOrdersOpen() {
@@ -691,11 +749,14 @@ async function fetchOrdersOpen() {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 6000);
   try {
-    const res = await fetch(CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/shop_settings?select=accepting_orders&limit=1",
-      { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal });
+    const base = CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/shop_settings?select=";
+    const opts = { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal };
+    let res = await fetch(base + "accepting_orders,min_order,delivery_charge,free_delivery_above,cod_max_total,accept_upi,accept_cod,accept_pay_at_pickup,upi_id&limit=1", opts);
+    // a database that has not been updated for payments yet does not have the newer columns
+    if (!res.ok) res = await fetch(base + "accepting_orders,min_order,delivery_charge&limit=1", opts);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const rows = await res.json();
-    if (Array.isArray(rows) && rows.length) { ordersOpen = rows[0].accepting_orders !== false; ordersCheckedAt = Date.now(); }
+    if (Array.isArray(rows) && rows.length) { applySettingsRow(rows[0]); ordersCheckedAt = Date.now(); }
   } catch (e) { /* can't tell: keep the last known answer (open) rather than block the shop */ }
   finally { clearTimeout(timer); }
 }
@@ -735,7 +796,9 @@ const ORDER_ERRORS = {
   INVALID_ADDRESS: "Please enter your full delivery address.",
   INVALID_DATE: "Please choose a valid date.",
   INVALID_TEXT: "Your note or time is too long. Please shorten it.",
-  INVALID_ORDER: "Sorry, we couldn't process that order. Please reload the page and try again."
+  INVALID_ORDER: "Sorry, we couldn't process that order. Please reload the page and try again.",
+  INVALID_PAYMENT: "That payment option isn't available any more. Please choose another.",
+  COD_LIMIT: "Cash on delivery isn't available for orders this large. Please choose UPI."
 };
 
 function newToken() {
@@ -756,12 +819,15 @@ function buildPayload() {
   };
 }
 
-function showConfirm(on) {
-  $("confirm").hidden = !on;
-  $("panelBody").hidden = on;
-  $("panelFoot").hidden = on;
-  $("panelTitle").textContent = on ? "Order placed" : "Your order";
+// The panel shows one of three views: the cart, the payment choice, or the confirmation
+function showPanelView(v) {
+  $("panelBody").hidden = v !== "cart";
+  $("panelFoot").hidden = v !== "cart";
+  $("payStep").hidden = v !== "pay";
+  $("confirm").hidden = v !== "confirm";
+  $("panelTitle").textContent = v === "confirm" ? "Order placed" : v === "pay" ? "Payment" : "Your order";
 }
+function showConfirm(on) { showPanelView(on ? "confirm" : "cart"); }
 
 function pruneCart() {
   for (const id in cart) { const it = MENU_BY_ID[id]; if (!it || !it.available) delete cart[id]; }
@@ -770,6 +836,13 @@ function pruneCart() {
 async function handleOrderError(e) {
   const code = e && e.body && e.body.message;
   if (code === "ORDERS_PAUSED") { ordersOpen = false; ordersCheckedAt = Date.now(); applyOrdersOpen(); return; }
+  if (code === "INVALID_PAYMENT" || code === "COD_LIMIT") {   // the payment options changed: refresh them and let the customer choose again
+    await fetchOrdersOpen();
+    showPayStep();
+    $("payNotice").textContent = ORDER_ERRORS[code];
+    $("payNotice").hidden = false;
+    return;
+  }
   if (code && ORDER_ERRORS[code]) {
     if (code === "ITEM_UNAVAILABLE" || code === "INVALID_ITEMS") { await loadMenu(); pruneCart(); }
     orderMsg = ORDER_ERRORS[code];
@@ -779,24 +852,117 @@ async function handleOrderError(e) {
     fallbackMode = true;
     orderMsg = "We couldn't save your order online. You can still send it to the shop on WhatsApp.";
   }
+  showPanelView("cart");
   onCartChange();
 }
 
-async function submitOrder() {
+let chosenPayment = null;   // the payment method picked on the payment screen
+let lastPayment = null;     // the method of the last attempt, used if we have to fall back to WhatsApp only
+
+// Which payment methods can this order use? (The database checks the same rules again.)
+function paymentOptions(type, total) {
+  const out = [];
+  if (S && S.upi) out.push({ id: "UPI", label: "Pay with UPI", hint: "Pay now in your UPI app (GPay, PhonePe, Paytm and others)" });
+  if (S && type === "Delivery" && S.cod) {
+    const over = S.codMax > 0 && total > S.codMax;
+    out.push({ id: "COD", label: "Cash on delivery", hint: over ? "Not available for orders above " + rupees(S.codMax) : "Pay in cash when your order arrives", disabled: over });
+  }
+  if (S && type === "Pickup" && S.pickup) out.push({ id: "PAY_AT_PICKUP", label: "Pay at pickup", hint: "Pay when you collect your order" });
+  return out;
+}
+
+function showPayStep() {
+  const t = orderTotals(), type = currentType();
+  const opts = paymentOptions(type, t.total);
+  chosenPayment = null;
+  $("payTotal").textContent = type + " · Total " + rupees(t.total);
+  $("payNotice").hidden = true;
+  $("payConfirm").disabled = true;
+  const box = $("payOptions");
+  box.textContent = "";
+  const enabled = opts.filter(o => !o.disabled);
+  opts.forEach(o => {
+    const label = document.createElement("label");
+    label.className = "pay-opt" + (o.disabled ? " disabled" : "");
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "payMethod"; input.value = o.id; input.disabled = !!o.disabled;
+    input.addEventListener("change", () => { chosenPayment = o.id; $("payConfirm").disabled = false; });
+    const text = document.createElement("div");
+    const strong = document.createElement("strong"); strong.textContent = o.label;
+    const hint = document.createElement("span"); hint.className = "hint"; hint.textContent = o.hint;
+    text.appendChild(strong); text.appendChild(hint);
+    label.appendChild(input); label.appendChild(text);
+    box.appendChild(label);
+    if (enabled.length === 1 && enabled[0] === o) { input.checked = true; chosenPayment = o.id; $("payConfirm").disabled = false; }   // only one choice: pre-select it
+  });
+  if (!enabled.length) {
+    $("payNotice").textContent = "No payment method is available for this order right now. Please message the shop on WhatsApp.";
+    $("payNotice").hidden = false;
+  }
+  showPanelView("pay");
+}
+
+// "Place order" in the cart: check the form, then ask how they want to pay
+function startCheckout() {
   if (placing) return;
   const t = orderTotals();
-  if (!t.count || t.subtotal < (CONFIG.minOrder || 0)) return;
+  if (!t.count || t.subtotal < effMin()) return;
   attempted = true;
   const bad = validate(true);
   if (bad) { $(bad).focus(); return; }
+  if (!paymentsOn()) { submitOrder(null); return; }   // database not updated for payments yet: save without the payment step
+  showPayStep();
+}
+
+function upiLink(id, amount, ref) {
+  return "upi://pay?pa=" + id + "&pn=" + encodeURIComponent(CONFIG.shopName) + "&am=" + Number(amount).toFixed(2) + "&cu=INR&tn=" + encodeURIComponent("Order " + ref);
+}
+
+function showConfirmation(body, payment) {
+  const d = readDetails();
+  const totals = { subtotal: body.subtotal, delivery: body.delivery_charge, total: body.total };
+  $("waConfirm").href = orderLink(totals, body.order_ref, payment);
+  $("confirmRef").textContent = body.order_ref;
+  $("confirmSummary").textContent = d.type + " · Total " + rupees(body.total);
+  const pay = $("confirmPay"), box = $("upiBox");
+  pay.hidden = true; box.hidden = true;
+  $("waConfirm").textContent = "Send on WhatsApp";
+  if (payment === "UPI" && S && S.upiId) {
+    pay.textContent = "Payment: pay " + rupees(body.total) + " by UPI. Then send your order on WhatsApp with the payment screenshot, and the shop will confirm your payment.";
+    pay.hidden = false;
+    $("upiPay").href = upiLink(S.upiId, body.total, body.order_ref);
+    $("upiPay").textContent = "Pay " + rupees(body.total) + " with UPI";
+    $("upiIdText").textContent = S.upiId;
+    $("copyUpi").textContent = "Copy";
+    box.hidden = false;
+    $("waConfirm").textContent = "Send on WhatsApp with screenshot";
+  } else if (payment === "COD") {
+    pay.textContent = "Payment: pay " + rupees(body.total) + " in cash when your order arrives.";
+    pay.hidden = false;
+  } else if (payment === "PAY_AT_PICKUP") {
+    pay.textContent = "Payment: pay " + rupees(body.total) + " when you pick up your order.";
+    pay.hidden = false;
+  }
+  showPanelView("confirm");
+}
+
+async function submitOrder(payment) {
+  if (placing) return;
+  const t = orderTotals();
+  if (!t.count || t.subtotal < effMin()) return;
+  lastPayment = payment || null;
 
   const payload = buildPayload();
+  if (payment) payload.payment = payment;
   const key = JSON.stringify(payload);
   if (key !== pendingKey) { pendingKey = key; pendingToken = newToken(); }
 
   placing = true;
   orderMsg = "";
   $("placeBtn").textContent = "Placing your order…";
+  $("payConfirm").textContent = "Placing your order…";
+  $("payConfirm").disabled = true;
+  $("payBack").disabled = true;
   updateCheckout();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 12000);
@@ -811,12 +977,8 @@ async function submitOrder() {
     try { body = await res.json(); } catch (e) { /* not JSON */ }
     if (!res.ok || !body || !body.order_ref) throw { status: res.status, body: res.ok ? null : body };
 
-    // Saved. Build the WhatsApp message BEFORE the cart is emptied.
-    const totals = { subtotal: body.subtotal, delivery: body.delivery_charge, total: body.total };
-    const d = readDetails();
-    $("waConfirm").href = orderLink(totals, body.order_ref);
-    $("confirmRef").textContent = body.order_ref;
-    $("confirmSummary").textContent = d.type + " · Total " + rupees(body.total);
+    // Saved. Build the confirmation and the WhatsApp message BEFORE the cart is emptied.
+    showConfirmation(body, payment);
     pendingKey = ""; pendingToken = "";
     for (const id in cart) delete cart[id];
     $("fNotes").value = "";
@@ -824,8 +986,8 @@ async function submitOrder() {
     ALL_FIELDS.forEach(id => { $(id).setAttribute("aria-invalid", "false"); $("err-" + id).textContent = ""; });
     fallbackMode = false;
     orderMsg = "";
+    chosenPayment = null;
     onCartChange();
-    showConfirm(true);
     $("waConfirm").focus();
   } catch (e) {
     await handleOrderError(e);
@@ -833,10 +995,25 @@ async function submitOrder() {
     clearTimeout(timer);
     placing = false;
     $("placeBtn").textContent = "Place order";
+    $("payConfirm").textContent = "Confirm order";
+    $("payConfirm").disabled = !chosenPayment;
+    $("payBack").disabled = false;
     updateCheckout();
   }
 }
-$("placeBtn").addEventListener("click", submitOrder);
+$("payConfirm").addEventListener("click", () => { if (chosenPayment) submitOrder(chosenPayment); });
+$("payBack").addEventListener("click", () => showPanelView("cart"));
+$("copyUpi").addEventListener("click", async () => {
+  const btn = $("copyUpi"), id = $("upiIdText").textContent;
+  let done = false;
+  try { await navigator.clipboard.writeText(id); done = true; } catch (e) { /* try the older way */ }
+  if (!done) {
+    try { const r = document.createRange(); r.selectNodeContents($("upiIdText")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); done = document.execCommand("copy"); } catch (e) { /* ignore */ }
+  }
+  btn.textContent = done ? "Copied" : "Select and copy";
+  setTimeout(() => { btn.textContent = "Copy"; }, 2500);
+});
+$("placeBtn").addEventListener("click", startCheckout);
 $("confirmDone").addEventListener("click", closeCart);
 
 $("checkout").addEventListener("click", e => {
@@ -849,7 +1026,7 @@ $("checkout").addEventListener("click", e => {
     n.hidden = false;
     return;
   }
-  if (t.subtotal < (CONFIG.minOrder || 0)) { e.preventDefault(); return; }   // the minimum-order notice is already showing
+  if (t.subtotal < effMin()) { e.preventDefault(); return; }   // the minimum-order notice is already showing
   if (sending) { e.preventDefault(); return; }   // ignore a double tap while the order is being sent
   attempted = true;
   const bad = validate(true);
