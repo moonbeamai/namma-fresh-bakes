@@ -92,6 +92,10 @@
   .o-items li, .o-sum { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; overflow-wrap: anywhere; }
   .o-sum.total { font-weight: 600; font-size: 1.05rem; }
   .o-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .pay-unpaid { background: #f8e6c2; color: #7a4b00; }
+  .pay-paid { background: #d9efdd; color: #1f5f2e; }
+  .pay-refunded { background: #e6e0d4; color: #5a4d44; }
+  .o-refund { padding: 8px 10px; border-left: 3px solid var(--bad); background: #fbe3df; color: #8c1c13; }
   .btn.sm { padding: 7px 14px; font-size: 0.9rem; text-decoration: none; }
   a.btn.ghost { border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); }
   select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
@@ -524,6 +528,8 @@ const CONFIG = {
   /* ---------- orders ---------- */
   var STATUS_LABEL = { "new": "New", confirmed: "Confirmed", ready: "Ready", completed: "Completed", cancelled: "Cancelled" };
   var NEXT = { "new": ["confirmed", "Confirm order"], confirmed: ["ready", "Mark ready"], ready: ["completed", "Mark completed"] };
+  var PAY_LABEL = { UPI: "UPI", COD: "Cash on delivery", PAY_AT_PICKUP: "Pay at pickup" };
+  var PAY_STATUS = { unpaid: "Unpaid", paid: "Paid", refunded: "Refunded" };
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var IST = 19800000;   // India is UTC+5:30 all year
@@ -550,6 +556,7 @@ const CONFIG = {
     if (f === "todo") return isActive(o);
     if (f === "today") return isToday(o) && o.status !== "cancelled";
     if (f === "done") return !isActive(o);
+    if (f === "unpaid") return !!o.payment_method && o.payment_status === "unpaid" && o.status !== "cancelled";   // orders from before payments existed are left out
     return true;
   }
   function sortOrders(list, f) {
@@ -577,7 +584,15 @@ const CONFIG = {
   function customerMessage(o) {
     var who = "Hi " + o.customer_name + ", ";
     var ref = "your order " + o.order_ref;
-    if (o.status === "confirmed") return who + ref + " from " + CONFIG.shopName + " is confirmed. Total " + money(o.total) + ".";
+    if (o.status === "confirmed") {
+      var how = "";
+      if (o.payment_status === "unpaid") {
+        if (o.payment_method === "UPI") how = " Please complete the UPI payment and send us the screenshot.";
+        else if (o.payment_method === "COD") how = " Please keep " + money(o.total) + " ready in cash.";
+        else if (o.payment_method === "PAY_AT_PICKUP") how = " Please pay " + money(o.total) + " when you pick it up.";
+      }
+      return who + ref + " from " + CONFIG.shopName + " is confirmed. Total " + money(o.total) + "." + how;
+    }
     if (o.status === "ready") return who + ref + " is ready" + (o.order_type === "Pickup" ? " for pickup." : " and will be on its way soon.");
     if (o.status === "completed") return who + "thank you for ordering from " + CONFIG.shopName + "!";
     if (o.status === "cancelled") return who + "sorry, we couldn't take " + ref + ". Please message us if you'd like to order again.";
@@ -598,11 +613,14 @@ const CONFIG = {
       h("div", { class: "o-head" },
         h("span", { class: "o-ref" }, o.order_ref),
         h("span", { class: "badge st-" + o.status }, STATUS_LABEL[o.status] || o.status),
+        o.payment_method ? h("span", { class: "badge pay-" + o.payment_status }, PAY_STATUS[o.payment_status] || o.payment_status) : null,
         h("span", { class: "muted" }, fmtCreated(o.created_at))),
       h("p", { class: "o-who" }, o.customer_name + (phoneOk ? " · " + o.customer_phone : "")),
       h("p", null, o.order_type + (when.length ? " · " + when.join(" · ") : "")),
+      o.payment_method ? h("p", null, "Payment: " + (PAY_LABEL[o.payment_method] || o.payment_method) + " · " + (PAY_STATUS[o.payment_status] || "") + (o.payment_status === "paid" && o.paid_at ? " (" + fmtCreated(o.paid_at) + ")" : "")) : null,
       o.address ? h("p", null, "Address: " + o.address) : null,
       o.notes ? h("p", null, "Note: " + o.notes) : null,
+      (o.payment_method && o.status === "cancelled" && o.payment_status === "paid") ? h("p", { class: "o-refund" }, "Refund due: " + money(o.total) + " was paid for this cancelled order. Refund the customer, then mark it refunded.") : null,
       h("ul", { class: "o-items" }, items.map(function (it) {
         return h("li", null, h("span", null, Number(it.qty) + " × " + String(it.name)), h("span", null, money(Number(it.price) * Number(it.qty))));
       })),
@@ -614,8 +632,27 @@ const CONFIG = {
     var next = NEXT[o.status];
     if (next) {
       var nb = h("button", { type: "button", class: "btn" }, next[1]);
-      nb.addEventListener("click", function () { setStatus(o, next[0], nb); });
+      if (next[0] === "completed" && o.payment_method && o.payment_status === "unpaid") {
+        // completing an order that is still unpaid needs a second tap
+        twoTap(nb, "Still unpaid. Tap again to complete", function () { setStatus(o, next[0], nb); });
+      } else {
+        nb.addEventListener("click", function () { setStatus(o, next[0], nb); });
+      }
       actions.appendChild(nb);
+    }
+    if (o.payment_method) {
+      var pb = null;
+      if (o.payment_status === "unpaid" && o.status !== "cancelled") {
+        pb = h("button", { type: "button", class: "btn" }, "Mark paid");
+        pb.addEventListener("click", function () { setPayment(o, "paid", pb); });
+      } else if (o.payment_status === "paid" && o.status === "cancelled") {
+        pb = h("button", { type: "button", class: "btn" }, "Mark refunded");
+        pb.addEventListener("click", function () { setPayment(o, "refunded", pb); });
+      } else if (o.payment_status === "paid") {
+        pb = h("button", { type: "button", class: "btn ghost sm" }, "Mark unpaid");
+        pb.addEventListener("click", function () { setPayment(o, "unpaid", pb); });
+      }
+      if (pb) actions.appendChild(pb);
     }
     if (phoneOk) {
       var msg;
@@ -640,11 +677,11 @@ const CONFIG = {
   }
 
   function renderOrders() {
-    var counts = { todo: 0, today: 0, done: 0, all: orders.length };
-    orders.forEach(function (o) { ["todo", "today", "done"].forEach(function (f) { if (inFilter(o, f)) counts[f]++; }); });
+    var counts = { todo: 0, today: 0, unpaid: 0, done: 0, all: orders.length };
+    orders.forEach(function (o) { ["todo", "today", "unpaid", "done"].forEach(function (f) { if (inFilter(o, f)) counts[f]++; }); });
     var chips = $("chips");
     chips.textContent = "";
-    [["todo", "To do"], ["today", "Today"], ["done", "Done"], ["all", "All"]].forEach(function (c) {
+    [["todo", "To do"], ["today", "Today"], ["unpaid", "Unpaid"], ["done", "Done"], ["all", "All"]].forEach(function (c) {
       var b = h("button", { type: "button", class: "chip", "aria-pressed": filter === c[0] ? "true" : "false" }, c[1] + " (" + counts[c[0]] + ")");
       b.addEventListener("click", function () { filter = c[0]; renderOrders(); });
       chips.appendChild(b);
@@ -653,7 +690,7 @@ const CONFIG = {
     list.textContent = "";
     var shown = sortOrders(orders.filter(function (o) { return inFilter(o, filter); }), filter);
     if (!shown.length) {
-      var msgs = { todo: "No orders to do right now. New orders will appear here.", today: "No orders for today.", done: "No completed or cancelled orders.", all: "No orders yet." };
+      var msgs = { todo: "No orders to do right now. New orders will appear here.", today: "No orders for today.", unpaid: "No unpaid orders.", done: "No completed or cancelled orders.", all: "No orders yet." };
       list.appendChild(h("p", { class: "empty" }, msgs[filter]));
     }
     shown.forEach(function (o) { list.appendChild(orderCard(o)); });
@@ -664,12 +701,20 @@ const CONFIG = {
     document.title = (fresh ? "(" + fresh + ") " : "") + BASE_TITLE;
   }
 
+  var ORDER_COLS = "id,order_ref,created_at,status,customer_name,customer_phone,order_type,address,requested_date,requested_time,notes,items,subtotal,delivery_charge,total";
+  function queryOrders(withPay) {
+    return sb.from("orders")
+      .select(ORDER_COLS + (withPay ? ",payment_method,payment_status,paid_at" : ""))
+      .order("created_at", { ascending: false })
+      .limit(300);
+  }
   function loadOrders(quiet) {
     if (!sb || !currentUser) return;
-    sb.from("orders")
-      .select("id,order_ref,created_at,status,customer_name,customer_phone,order_type,address,requested_date,requested_time,notes,items,subtotal,delivery_charge,total")
-      .order("created_at", { ascending: false })
-      .limit(300)
+    queryOrders(true)
+      .then(function (res) {   // a database not yet updated for payments has no payment columns: ask again without them
+        if (res.error && (res.error.code === "42703" || /payment_/.test(String(res.error.message || "")))) return queryOrders(false);
+        return res;
+      })
       .then(function (res) {
         if (!currentUser) return;
         if (res.error) {
@@ -699,6 +744,20 @@ const CONFIG = {
       if (!res.data || !res.data.length) { say("Couldn't update the order. Please log out and log in again.", "error"); return; }
       o.status = res.data[0].status;
       say("Order " + o.order_ref + " is now " + (STATUS_LABEL[o.status] || o.status).toLowerCase() + ".", "success");
+      renderOrders();
+    });
+  }
+
+  function setPayment(o, status, btn) {
+    busy(btn, true);
+    var fields = { payment_status: status, paid_at: status === "paid" ? new Date().toISOString() : null };
+    sb.from("orders").update(fields).eq("id", o.id).select().then(function (res) {
+      busy(btn, false);
+      if (res.error) { handleError(res.error, "Couldn't update the payment. Please try again."); return; }
+      if (!res.data || !res.data.length) { say("Couldn't update the payment. Please log out and log in again.", "error"); return; }
+      o.payment_status = res.data[0].payment_status;
+      o.paid_at = res.data[0].paid_at;
+      say("Order " + o.order_ref + " marked " + (PAY_STATUS[o.payment_status] || o.payment_status).toLowerCase() + ".", "success");
       renderOrders();
     });
   }

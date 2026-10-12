@@ -57,9 +57,10 @@ Run `supabase-orders.sql` once per client in the Supabase SQL Editor, after repl
 One page, one login, two tabs.
 
 **Orders tab** (opens first): the orders saved by the Place order button.
-- Filters: **To do** (new, confirmed, ready), **Today**, **Done** (completed and cancelled), **All**. Each shows a count.
+- Filters: **To do** (new, confirmed, ready), **Today**, **Unpaid** (orders with a payment method that are not paid and not cancelled), **Done** (completed and cancelled), **All**. Each shows a count.
 - Each order shows the number, status, customer name and phone, delivery or pickup, date and time slot, address, notes, items with line totals, delivery charge and total.
 - Status buttons: **Confirm order**, then **Mark ready**, then **Mark completed**. **Cancel order** needs a second tap to confirm. Done orders can be **Reopened** or **Deleted** (second tap to confirm).
+- **Payments:** each order shows its method (UPI, Cash on delivery, Pay at pickup) and an Unpaid, Paid or Refunded badge. **Mark paid** records the payment and the time, and **Mark unpaid** undoes a slip. For UPI, check your UPI app and match the order number in the payment note before marking paid. For cash, mark it paid when the money is received. Completing an order that is still unpaid needs a second tap. If a paid order is cancelled, the card shows **Refund due**, and **Mark refunded** closes it once you have refunded the customer by UPI. Orders from before payments existed show no payment details.
 - **Call** and **WhatsApp** buttons for the customer. The WhatsApp message is filled in to match the order's status.
 - A switch at the top turns **Accepting online orders** on or off.
 - The page checks for new orders every 30 seconds while it is open and visible, and again when the owner comes back to it. A badge on the tab and in the page title shows how many are new. It cannot send phone notifications, so the WhatsApp message from the customer is still the instant alert.
