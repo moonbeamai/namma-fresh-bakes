@@ -23,6 +23,7 @@
     --line: #e6d9bd;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* without this, rules like .btn { display: ... } would keep hidden buttons visible */
   body { margin: 0; background: var(--ivory); color: var(--ink); font-family: "Hind", system-ui, sans-serif; line-height: 1.55; }
   body.lock { overflow: hidden; }
   h1, h2, h3 { font-family: "Young Serif", Georgia, serif; font-weight: 400; margin: 0; }
@@ -117,6 +118,7 @@
   .confirm .checkout { margin-top: 10px; }
   .confirm-tick { width: 48px; height: 48px; margin: 0 auto 8px !important; border-radius: 50%; background: #2f7a3d; color: #fff; font-size: 1.6rem; line-height: 48px; }
   .ref { font: 400 2.1rem "Young Serif", Georgia, serif; letter-spacing: 0.08em; color: var(--oxide); }
+  .paused-note { margin: 0 0 16px; padding: 12px 14px; border-left: 4px solid var(--oxide); border-radius: 6px; background: #f8e6c2; font-weight: 600; }
   .status { padding: 36px 0; text-align: center; color: var(--muted); }
   .menu-note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--oxide); background: #f8e6c2; font-size: 0.92rem; }
   button, .btn, .filters button { touch-action: manipulation; }   /* no double-tap zoom on + and - */
@@ -142,7 +144,7 @@
 const CONFIG = {
   shopName: "Namma Fresh Bakes",
   tagline: "Small-batch bakes from a Bengaluru home kitchen",
-  whatsapp: "917022238844",   // country code + number, no + or spaces
+  whatsapp: "919449923575",   // country code + number, no + or spaces
   area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
   leadDays: 1,                // earliest delivery date = today + this many days
   maxDays: 60,                // furthest date a customer can pick = today + this many days
@@ -164,7 +166,8 @@ const CONFIG = {
   supabaseKey: "sb_publishable_zzQ84uzQhG9KlefS3G1d8w_rC6Y7hei",  // PUBLISHABLE key only. Never paste the secret key here
   saveOrders: true,           // true = save each order in Supabase for the owner's dashboard. false = WhatsApp only, nothing saved
   privacyNote: "We save your name, phone, address and order so the shop can prepare it. They are used only for this order.",
-  privacyUrl: "privacy.html"   // page with the full privacy details ("" = no link)
+  privacyUrl: "privacy.html",   // page with the full privacy details ("" = no link)
+  pausedMessage: "We're not taking online orders right now. You can still look at the menu. Please check back soon."   // shown when the owner switches "Accepting online orders" off
 };
 
 /* =====================================================
@@ -198,6 +201,7 @@ const MENU = [
 <div class="kolam" aria-hidden="true"></div>
 
 <main>
+  <p class="paused-note" id="pausedNote" role="status" hidden></p>
   <div class="filters" id="filters" role="group" aria-label="Menu categories"></div>
   <p class="menu-note" id="menuNote" role="status" hidden></p>
   <div id="menu"></div>
@@ -370,6 +374,7 @@ function stepperHTML(item) {
 
 function controlHTML(item) {
   if (!item.available) return `<button type="button" class="btn" disabled>Sold out</button>`;
+  if (!ordersOpen && !cart[item.id]) return `<button type="button" class="btn" disabled>Not taking orders</button>`;
   if (!cart[item.id]) return `<button type="button" class="btn" data-act="add" data-id="${item.id}" aria-label="Add ${esc(item.name)} to cart">Add</button>`;
   return stepperHTML(item);
 }
@@ -413,7 +418,7 @@ function renderMenu() {
 
 function renderBar() {
   const { count, total } = cartSummary();
-  $("bar").hidden = count === 0;
+  $("bar").hidden = count === 0 || !ordersOpen;
   $("barCount").textContent = count + (count === 1 ? " item" : " items");
   $("barTotal").textContent = rupees(total);
 }
@@ -479,6 +484,14 @@ function renderTotals() {
 function updateCheckout() {
   const t = orderTotals();
   const link = $("checkout"), btn = $("placeBtn"), note = $("cartNotice");
+  if (!ordersOpen) {          // paused: no way to order at all, not even by WhatsApp
+    note.textContent = CONFIG.pausedMessage;
+    note.hidden = false;
+    link.hidden = true;
+    btn.hidden = true;
+    link.removeAttribute("href");
+    return;
+  }
   const min = CONFIG.minOrder || 0;
   const short = t.count > 0 && t.subtotal < min;
   const ready = t.count > 0 && !short;
@@ -499,6 +512,8 @@ let lastFocus = null;
 const panelIsOpen = () => $("panel").classList.contains("open");
 function openCart() {
   if (panelIsOpen()) return;
+  if (!ordersOpen) { applyOrdersOpen(); return; }
+  if (ordersCheckIsStale()) recheckOrdersOpen();   // closes the cart again if the shop has paused meanwhile
   lastFocus = document.activeElement;
   setMinDate();
   renderPanel();
@@ -536,7 +551,8 @@ document.addEventListener("click", e => {
   const id = Number(btn.dataset.id), act = btn.dataset.act;
   const q = cart[id] || 0;
   const origin = btn.closest("#panel") ? "panel" : "menu";
-  if (act === "add" || act === "inc") setQty(id, q + 1, origin, act);
+  if (act === "add") { addToCart(id, origin); return; }
+  if (act === "inc") setQty(id, q + 1, origin, act);
   else if (act === "dec") setQty(id, q - 1, origin, act);
   else if (act === "remove") setQty(id, 0, origin, act);
 });
@@ -663,6 +679,46 @@ function clearOrder() {
 }
 /* ---------- Saving orders in Supabase ---------- */
 const SAVE_ORDERS = CONFIG.saveOrders !== false && !!CONFIG.supabaseUrl && !!CONFIG.supabaseKey;
+
+// "Accepting online orders" switch (set by the owner in the admin page). Checked when the page opens,
+// when the cart is opened, when something is added to the cart, and when the customer comes back to the tab.
+let ordersOpen = true;
+let ordersCheckedAt = 0;
+const ordersCheckIsStale = () => SAVE_ORDERS && Date.now() - ordersCheckedAt > 30000;
+
+async function fetchOrdersOpen() {
+  if (!SAVE_ORDERS) return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const res = await fetch(CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/shop_settings?select=accepting_orders&limit=1",
+      { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length) { ordersOpen = rows[0].accepting_orders !== false; ordersCheckedAt = Date.now(); }
+  } catch (e) { /* can't tell: keep the last known answer (open) rather than block the shop */ }
+  finally { clearTimeout(timer); }
+}
+
+// Show or hide everything that depends on the switch
+function applyOrdersOpen() {
+  $("pausedNote").textContent = CONFIG.pausedMessage;
+  $("pausedNote").hidden = ordersOpen;
+  onCartChange();
+  if (!ordersOpen && panelIsOpen()) closeCart();
+}
+async function recheckOrdersOpen() { await fetchOrdersOpen(); applyOrdersOpen(); }
+
+async function addToCart(id, origin) {
+  if (ordersCheckIsStale()) await recheckOrdersOpen();
+  if (!ordersOpen) {                       // paused: tell them now, before they fill anything in
+    const note = $("pausedNote");
+    if (note.scrollIntoView) note.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  setQty(id, (cart[id] || 0) + 1, origin, "add");
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && ordersCheckIsStale()) recheckOrdersOpen(); });
 let placing = false;               // true while the order is being saved
 let pendingKey = "", pendingToken = "";   // a retry of the SAME order reuses its token, so it can never be saved twice
 let fallbackMode = false;          // true when saving failed: the customer can still send via WhatsApp
@@ -672,7 +728,6 @@ const ORDER_ERRORS = {
   BELOW_MINIMUM: "Your order is below the shop's minimum. Please add more items.",
   ITEM_UNAVAILABLE: "Sorry, an item in your cart just sold out. We've updated the menu. Please check your cart.",
   INVALID_ITEMS: "Something in your cart has changed. We've updated the menu. Please check your cart.",
-  ORDERS_PAUSED: "The shop isn't taking online orders right now. Please try again later.",
   TOO_MANY_ORDERS: "There have been too many orders from this number in the last hour. Please try again later.",
   INVALID_NAME: "Please check your name.",
   INVALID_PHONE: "Please check your phone number.",
@@ -714,6 +769,7 @@ function pruneCart() {
 
 async function handleOrderError(e) {
   const code = e && e.body && e.body.message;
+  if (code === "ORDERS_PAUSED") { ordersOpen = false; ordersCheckedAt = Date.now(); applyOrdersOpen(); return; }
   if (code && ORDER_ERRORS[code]) {
     if (code === "ITEM_UNAVAILABLE" || code === "INVALID_ITEMS") { await loadMenu(); pruneCart(); }
     orderMsg = ORDER_ERRORS[code];
@@ -784,6 +840,7 @@ $("placeBtn").addEventListener("click", submitOrder);
 $("confirmDone").addEventListener("click", closeCart);
 
 $("checkout").addEventListener("click", e => {
+  if (!ordersOpen) { e.preventDefault(); return; }   // paused: never open WhatsApp
   const t = orderTotals();
   if (!t.count) {
     e.preventDefault();
@@ -872,7 +929,9 @@ async function loadMenu() {
 
 async function start() {
   $("menu").innerHTML = '<p class="status">Loading menu…</p>';
-  await loadMenu();
+  await Promise.all([loadMenu(), fetchOrdersOpen()]);
+  $("pausedNote").textContent = CONFIG.pausedMessage;
+  $("pausedNote").hidden = ordersOpen;
   renderFilters();
   loadCart();       // after the menu is known, so saved items can be checked against it
   onCartChange();

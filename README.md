@@ -26,6 +26,7 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `saveOrders` | `true` saves each order in Supabase (needed for the orders dashboard). `false` = WhatsApp only, nothing is stored |
 | `privacyNote` | One line shown above the Place order button when orders are saved. Edit it to match what the shop really does with the data |
 | `privacyUrl` | Link shown after the privacy note, to the shop's privacy page. `""` = no link |
+| `pausedMessage` | The banner customers see when the owner switches **Accepting online orders** off |
 | `colors` | `main`, `accent` and `background` brand colours (keep the background light) |
 
 Customers choose **Delivery** or **Pickup**. The address field only appears, and is only required, for Delivery. The date and time labels change to match.
@@ -48,6 +49,7 @@ Run `supabase-orders.sql` once per client in the Supabase SQL Editor, after repl
 - If saving fails (no network, paused project, function missing), the customer is offered the old WhatsApp-only button, so no order is lost.
 - Customers cannot read or change orders. The database looks up prices itself, so a customer cannot send a lower price. It also refuses sold-out items, orders below the minimum, and more than 5 orders per phone per hour.
 - `shop_settings` holds `min_order`, `delivery_charge` and `accepting_orders`. Keep `min_order` and `delivery_charge` equal to `minOrder` and `deliveryCharge` in `index.html` CONFIG. To stop taking online orders, set `accepting_orders` to false in Table Editor.
+- **Pausing:** when the owner switches **Accepting online orders** off in the admin, customers see the `pausedMessage` banner at the top of the page as soon as it opens (and again if they tap Add after the switch changed). Every Add button becomes "Not taking orders", and there is no Place order button and no WhatsApp button, so there is no way to order. The page re-checks when it opens, when the cart is opened, when something is added after 30 seconds, and when the customer returns to the tab. The database also refuses orders while paused. This switch only exists for shops that save orders (`saveOrders: true`).
 - Orders contain customers' names, phone numbers and addresses. Tell the client, keep the privacy note accurate, and delete old orders you no longer need.
 
 ## Owner admin page (`admin.html`)
