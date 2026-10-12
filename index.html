@@ -63,23 +63,24 @@
   /* Cart panel (bottom sheet) */
   .overlay { position: fixed; inset: 0; z-index: 30; background: rgba(43, 26, 20, 0.5); opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
   .overlay.open { opacity: 1; visibility: visible; }
-  .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; flex-direction: column; max-width: 520px; max-height: 88vh; max-height: 88dvh; margin: 0 auto; background: var(--ivory); border-radius: 18px 18px 0 0; transform: translateY(100%); visibility: hidden; transition: transform 0.25s ease, visibility 0.25s; }
+  .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; flex-direction: column; max-width: 520px; max-height: 92vh; max-height: 92dvh; margin: 0 auto; background: var(--ivory); border-radius: 18px 18px 0 0; transform: translateY(100%); visibility: hidden; transition: transform 0.25s ease, visibility 0.25s; }
   .panel.open { transform: none; visibility: visible; }
   .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 2px dotted var(--gold); }
   .panel-head h2 { font-size: 1.35rem; color: var(--oxide); }
   .close { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; }
   .panel-body { flex: 1; padding: 0 18px; overflow-y: auto; }
   .lines { margin: 0; padding: 0; list-style: none; }
-  .details { padding: 18px 0 22px; }
-  .details h3 { margin-bottom: 12px; font-size: 1.1rem; color: var(--oxide); }
-  .field { margin-bottom: 12px; }
+  .details { padding: 4px 0 8px; }
+  .details h3.sec { margin: 26px 0 14px; padding-bottom: 6px; border-bottom: 1px dotted var(--gold); font-size: 1.1rem; color: var(--oxide); }
+  .details h3.sec:first-child { margin-top: 20px; }
+  .field { margin-bottom: 18px; }
   .field label { display: block; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
   .field .opt { font-weight: 400; color: var(--muted); }
   .field input, .field textarea, .field select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
   .field textarea { resize: vertical; }
   .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible { border-color: var(--oxide); outline: 3px solid var(--gold); outline-offset: 1px; }
   .field [aria-invalid="true"] { border-color: #b3261e; }
-  fieldset.field { margin: 0 0 12px; padding: 0; border: 0; min-width: 0; }
+  fieldset.field { margin: 0 0 18px; padding: 0; border: 0; min-width: 0; }
   fieldset.field legend { padding: 0; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .seg label { position: relative; margin: 0; }
@@ -97,13 +98,13 @@
   .line-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .line-total { font-weight: 600; white-space: nowrap; }
   .empty { padding: 28px 0; text-align: center; color: var(--muted); }
-  .panel-foot { padding: 14px 18px calc(16px + env(safe-area-inset-bottom, 0px)); border-top: 2px dotted var(--gold); }
-  .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1.15rem; font-weight: 600; }
+  .panel-foot { padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 2px dotted var(--gold); background: var(--ivory); }
+  .total-row { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 1.15rem; font-weight: 600; }
   .checkout { display: block; padding: 13px 16px; text-align: center; }
   .checkout[aria-disabled="true"] { background: #b9aaa0; pointer-events: none; }
 
   .cutoff { margin: 14px 0 0; padding: 8px 12px; border-left: 3px solid var(--gold); background: #f4ead2; font-size: 0.9rem; color: var(--muted); }
-  .sum-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.95rem; color: var(--muted); }
+  .sum-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; color: var(--muted); }
   .sum-row[hidden] { display: none; }
   .notice { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: #f8e6c2; font-size: 0.9rem; }
   .toast { position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 50; transform: translateX(-50%); width: max-content; max-width: 90%; padding: 12px 16px; border-radius: 10px; background: var(--ink); color: var(--ivory); font-size: 0.95rem; text-align: center; }
@@ -134,6 +135,18 @@
   .confirm-pay { font-weight: 600; }
   .upi-box { margin: 8px 0; padding: 12px; border: 1px dashed var(--oxide); border-radius: 10px; background: #fff; }
   .upi-box p { margin: 8px 0 0; }
+  .summary-card { margin: 16px 0 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .summary-card .free-hint { margin: 0 0 10px; }
+  .foot-row { display: flex; align-items: center; gap: 14px; }
+  .foot-total { display: flex; flex-direction: column; min-width: 4.8rem; line-height: 1.2; }
+  .foot-total span:first-child { font-size: 0.8rem; color: var(--muted); }
+  .foot-total strong { font-size: 1.2rem; }
+  .panel-foot .checkout { flex: 1; width: auto; margin: 0; }
+  .panel-foot .notice { margin: 0 0 8px; }
+  .row-dt { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+  @media (min-width: 400px) { .row-dt { grid-template-columns: 1fr 1fr; } }
+  .field input, .field select { min-height: 46px; }
+  .privacy { margin: 6px 0 22px; }
   .status { padding: 36px 0; text-align: center; color: var(--muted); }
   .menu-note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--oxide); background: #f8e6c2; font-size: 0.92rem; }
   button, .btn, .filters button { touch-action: manipulation; }   /* no double-tap zoom on + and - */
@@ -159,7 +172,7 @@
 const CONFIG = {
   shopName: "Namma Fresh Bakes",
   tagline: "Small-batch bakes from a Bengaluru home kitchen",
-  whatsapp: "917022238844",   // country code + number, no + or spaces
+  whatsapp: "919449923575",   // country code + number, no + or spaces
   area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
   leadDays: 1,                // earliest delivery date = today + this many days
   maxDays: 60,                // furthest date a customer can pick = today + this many days
@@ -180,7 +193,7 @@ const CONFIG = {
   supabaseUrl: "https://bumddoxdrdddxbwjqlhk.supabase.co",   // Project URL from Supabase. Use "" to show only the built-in MENU below
   supabaseKey: "sb_publishable_zzQ84uzQhG9KlefS3G1d8w_rC6Y7hei",  // PUBLISHABLE key only. Never paste the secret key here
   saveOrders: true,           // true = save each order in Supabase for the owner's dashboard. false = WhatsApp only, nothing saved
-  privacyNote: "We save your name, phone, address and order so the shop can prepare it. They are used only for this order.",
+  privacyNote: "",              // optional sentence shown before the link ("" = just the link)
   privacyUrl: "privacy.html",   // page with the full privacy details ("" = no link)
   pausedMessage: "We're not taking online orders right now. You can still look at the menu. Please check back soon."   // shown when the owner switches "Accepting online orders" off
 };
@@ -244,8 +257,16 @@ const MENU = [
   <div class="panel-body" id="panelBody">
     <p class="cutoff" id="cutoff" hidden></p>
     <ul class="lines" id="lines"></ul>
+
+    <div class="summary-card">
+      <p class="free-hint" id="freeHint" hidden></p>
+      <div class="sum-row"><span>Items</span><span id="panelSub"></span></div>
+      <div class="sum-row" id="deliveryRow" hidden><span>Delivery charge</span><span id="panelDelivery"></span></div>
+      <div class="total-row"><span>Total</span><span id="panelTotal"></span></div>
+    </div>
+
     <form class="details" id="details" novalidate>
-      <h3>Delivery details</h3>
+      <h3 class="sec">Your details</h3>
       <div class="field">
         <label for="fName">Name</label>
         <input id="fName" type="text" autocomplete="name" maxlength="60" required aria-describedby="err-fName">
@@ -256,6 +277,8 @@ const MENU = [
         <input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="10-digit number" required aria-describedby="err-fPhone">
         <span class="err" id="err-fPhone" role="alert"></span>
       </div>
+
+      <h3 class="sec">Delivery or pickup</h3>
       <fieldset class="field">
         <legend>Order type</legend>
         <div class="seg">
@@ -268,31 +291,34 @@ const MENU = [
         <textarea id="fAddress" rows="3" maxlength="250" autocomplete="street-address" placeholder="House no., street, area, landmark" required aria-describedby="err-fAddress"></textarea>
         <span class="err" id="err-fAddress" role="alert"></span>
       </div>
-      <div class="field" id="fieldDate">
-        <label for="fDate" id="lblDate">Delivery date</label>
-        <input id="fDate" type="date" required aria-describedby="err-fDate">
-        <span class="err" id="err-fDate" role="alert"></span>
+      <div class="row-dt">
+        <div class="field" id="fieldDate">
+          <label for="fDate" id="lblDate">Delivery date</label>
+          <input id="fDate" type="date" required aria-describedby="err-fDate">
+          <span class="err" id="err-fDate" role="alert"></span>
+        </div>
+        <div class="field" id="fieldTime">
+          <label for="fTime" id="lblTime">Preferred time</label>
+          <select id="fTime" required aria-describedby="err-fTime"><option value="">Choose a time</option></select>
+          <span class="err" id="err-fTime" role="alert"></span>
+        </div>
       </div>
-      <div class="field" id="fieldTime">
-        <label for="fTime" id="lblTime">Preferred time</label>
-        <select id="fTime" required aria-describedby="err-fTime"><option value="">Choose a time</option></select>
-        <span class="err" id="err-fTime" role="alert"></span>
-      </div>
+
+      <h3 class="sec">Anything to add?</h3>
       <div class="field">
         <label for="fNotes">Notes <span class="opt">(optional)</span></label>
         <textarea id="fNotes" rows="2" maxlength="300" placeholder="Message on the cake, allergies, delivery time"></textarea>
       </div>
     </form>
+    <p class="privacy" id="privacy" hidden></p>
   </div>
   <div class="panel-foot" id="panelFoot">
-    <p class="free-hint" id="freeHint" hidden></p>
-    <div class="sum-row"><span>Items</span><span id="panelSub"></span></div>
-    <div class="sum-row" id="deliveryRow" hidden><span>Delivery charge</span><span id="panelDelivery"></span></div>
-    <div class="total-row"><span>Total</span><span id="panelTotal"></span></div>
     <p class="notice" id="cartNotice" role="alert" hidden></p>
-    <p class="privacy" id="privacy" hidden></p>
-    <button type="button" class="btn checkout" id="placeBtn" hidden>Place order</button>
-    <a class="btn checkout" id="checkout" target="_blank" rel="noopener">Send order on WhatsApp</a>
+    <div class="foot-row">
+      <div class="foot-total"><span>Total</span><strong id="footTotal"></strong></div>
+      <button type="button" class="btn checkout" id="placeBtn" hidden>Place order</button>
+      <a class="btn checkout" id="checkout" target="_blank" rel="noopener">Send order on WhatsApp</a>
+    </div>
   </div>
   <div class="paystep" id="payStep" hidden>
     <h3>How would you like to pay?</h3>
@@ -512,6 +538,7 @@ function renderTotals() {
   $("deliveryRow").hidden = !(t.count && t.isDelivery);
   $("panelDelivery").textContent = t.delivery > 0 ? rupees(t.delivery) : "Free";
   $("panelTotal").textContent = rupees(t.total);
+  $("footTotal").textContent = rupees(t.total);
   const need = effFreeAbove() - t.subtotal;
   const hint = $("freeHint");
   hint.hidden = !(t.count && t.isDelivery && effFreeAbove() > 0 && need > 0);
@@ -1043,9 +1070,9 @@ if (CONFIG.colors) {
   if (CONFIG.colors.accent) root.setProperty("--gold", CONFIG.colors.accent);
   if (CONFIG.colors.background) root.setProperty("--ivory", CONFIG.colors.background);
 }
-if (SAVE_ORDERS && CONFIG.privacyNote) {
+if (SAVE_ORDERS && (CONFIG.privacyNote || CONFIG.privacyUrl)) {
   const pv = $("privacy");
-  pv.textContent = CONFIG.privacyNote + " ";
+  pv.textContent = CONFIG.privacyNote ? CONFIG.privacyNote + " " : "";
   if (CONFIG.privacyUrl) {
     const link = document.createElement("a");
     link.href = CONFIG.privacyUrl;

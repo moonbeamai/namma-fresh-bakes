@@ -24,7 +24,7 @@ Open `index.html`. Edit **only** the first script block, right after the opening
 | `supabaseUrl` | The client's Supabase Project URL. `""` = use only the built-in `MENU` (no database) |
 | `supabaseKey` | The client's Supabase **publishable** key (`sb_publishable_...`). Never the secret key |
 | `saveOrders` | `true` saves each order in Supabase (needed for the orders dashboard). `false` = WhatsApp only, nothing is stored |
-| `privacyNote` | One line shown above the Place order button when orders are saved. Edit it to match what the shop really does with the data |
+| `privacyNote` | Optional sentence shown before the privacy link above the Place order button. Empty by default, so only the **Privacy details** link shows |
 | `privacyUrl` | Link shown after the privacy note, to the shop's privacy page. `""` = no link |
 | `pausedMessage` | The banner customers see when the owner switches **Accepting online orders** off |
 | `colors` | `main`, `accent` and `background` brand colours (keep the background light) |
@@ -67,6 +67,8 @@ One page, one login, two tabs.
 
 **Clear old orders** (at the bottom of the Orders tab): the owner picks 30, 60, 90 or 180 days. The first tap counts the finished orders that old, and the second tap deletes them. Only completed and cancelled orders are deleted.
 
+**Settings tab**: the owner can change the payment and delivery rules without opening Supabase: their UPI ID, whether to accept UPI, cash on delivery and pay at pickup, the cash on delivery limit, the minimum order, the delivery charge and the free delivery amount. The page warns if a combination would stop customers from ordering (for example UPI switched on without a UPI ID, and cash on delivery off). Amounts must be whole rupees. A database that has not been updated with the latest `supabase-orders.sql` shows only the amounts. `admin.html#settings` opens this tab.
+
 **Menu tab**: change name, price, category and description, switch items between Available and Sold out, add new items, delete items (two taps to confirm).
 
 Setup:
@@ -84,7 +86,7 @@ After the customer taps **Place order** the page shows a payment choice, and the
 - **UPI:** the confirmation shows a **Pay with UPI** button that opens the customer's UPI app with the shop's UPI ID, the exact total and the order number filled in, plus the UPI ID with a Copy button for phones that can't open the link. The customer then sends the order on WhatsApp with the payment screenshot.
 - **The page cannot see whether a UPI payment went through.** Orders start as `unpaid`. The owner checks their UPI app, matches the order number in the payment note, and marks the order paid. Treat UPI orders as unconfirmed until then.
 
-Set these in Table Editor, `shop_settings` (one row):
+These live in the `shop_settings` table (one row). The owner changes them in the admin page's **Settings** tab; you can also edit them in Table Editor:
 
 | Column | What it does |
 | --- | --- |
