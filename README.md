@@ -61,6 +61,8 @@ One page, one login, two tabs.
 - Each order shows the number, status, customer name and phone, delivery or pickup, date and time slot, address, notes, items with line totals, delivery charge and total.
 - Status buttons: **Confirm order**, then **Mark ready**, then **Mark completed**. **Cancel order** needs a second tap to confirm. Done orders can be **Reopened** or **Deleted** (second tap to confirm).
 - **Payments:** each order shows its method (UPI, Cash on delivery, Pay at pickup) and an Unpaid, Paid or Refunded badge. **Mark paid** records the payment and the time, and **Mark unpaid** undoes a slip. For UPI, check your UPI app and match the order number in the payment note before marking paid. For cash, mark it paid when the money is received. Completing an order that is still unpaid needs a second tap. If a paid order is cancelled, the card shows **Refund due**, and **Mark refunded** closes it once you have refunded the customer by UPI. Orders from before payments existed show no payment details.
+- **Payment reported:** when a customer taps **I've paid**, the order shows a blue **Payment reported** badge and a note ("The customer says they paid ₹490. Check your UPI app..."). The tab badge and page title count it together with new orders, and an alert appears on the next refresh. Mark paid confirms it. **Mark unpaid** also clears the report.
+- **Cancelling:** after **Cancel order**, a banner offers **Tell them on WhatsApp**. It opens WhatsApp to the customer with this message already written: "Hi Asha, your order ABC123 from the shop has been cancelled. If any money was deducted, it will be refunded to you. Sorry for the trouble." The owner taps Send. The app cannot send WhatsApp messages by itself: that needs a WhatsApp Business account with an approved message template and server code, which can be added later as a paid upgrade. If the customer paid, the owner still refunds by UPI and marks the order refunded.
 - **Call** and **WhatsApp** buttons for the customer. The WhatsApp message is filled in to match the order's status.
 - A switch at the top turns **Accepting online orders** on or off.
 - The page checks for new orders every 30 seconds while it is open and visible, and again when the owner comes back to it. A badge on the tab and in the page title shows how many are new. It cannot send phone notifications, so the WhatsApp message from the customer is still the instant alert.
@@ -83,8 +85,8 @@ Setup:
 After the customer taps **Place order** the page shows a payment choice, and the order is saved only when they confirm it:
 - **Delivery orders:** UPI or Cash on delivery.
 - **Pickup orders:** UPI or Pay at pickup.
-- **UPI:** the confirmation shows a **Pay with UPI** button that opens the customer's UPI app with the shop's UPI ID, the exact total and the order number filled in, plus the UPI ID with a Copy button for phones that can't open the link. The customer then sends the order on WhatsApp with the payment screenshot.
-- **The page cannot see whether a UPI payment went through.** Orders start as `unpaid`. The owner checks their UPI app, matches the order number in the payment note, and marks the order paid. Treat UPI orders as unconfirmed until then.
+- **UPI:** the confirmation offers three ways to pay. On a phone, a button opens the customer's UPI app with the shop's UPI ID filled in. With a **business** UPI ID and the `upi_prefill` setting on, the exact total and the order number are filled in too. With a **personal** UPI ID (the default), the link and QR carry only the UPI ID and shop name, and the customer types the amount shown on screen. A **QR code** (shown straight away on a computer, behind a **Show QR code** button on a phone) can be scanned by any UPI app, or screenshotted and used with Scan from gallery. And the UPI ID, amount and note are shown with Copy buttons for paying by hand. The customer then sends the order on WhatsApp with the payment screenshot. A computer cannot open UPI links, so the button only appears on phones.
+- **The page cannot see whether a UPI payment went through.** Orders start as `unpaid`. After paying, the customer taps **I've paid** on the confirmation. That flags the order as **Payment reported** in the admin, with an alert like the new-order one, but it is only the customer's word. The owner checks their UPI app, matches the order number in the payment note, and taps **Mark paid**. Treat UPI orders as unconfirmed until then. Fully automatic payment confirmation needs a payment gateway.
 
 These live in the `shop_settings` table (one row). The owner changes them in the admin page's **Settings** tab; you can also edit them in Table Editor:
 
@@ -92,13 +94,23 @@ These live in the `shop_settings` table (one row). The owner changes them in the
 | --- | --- |
 | `upi_id` | The shop's UPI ID, like `shopname@okaxis`. UPI is not offered until this is set |
 | `accept_upi`, `accept_cod`, `accept_pay_at_pickup` | Switch each payment method on or off |
+| `upi_prefill` | Off (default): the UPI link and QR carry only the UPI ID, and the customer types the amount. On: the amount and order number are filled in. Turn it on only for a business UPI ID |
 | `cod_max_total` | Largest order total allowed for cash on delivery. `0` = no limit. Default 1500 |
 | `free_delivery_above` | Items total at or above this get free delivery. `0` = never free. Default 1000 |
 | `min_order`, `delivery_charge` | As before |
 
 The database checks all of this again when an order is placed, so the page can't be tricked into a method or price that isn't allowed. Orders store `payment_method` (`UPI`, `COD` or `PAY_AT_PICKUP`), `payment_status` (`unpaid`, `paid` or `refunded`) and `paid_at`. Orders from before payments existed have no payment method.
 
-To upgrade a shop that already has the Week 3 database, run the new `supabase-orders.sql` again. It adds the new columns and leaves existing orders alone.
+To upgrade a shop that already has the Week 3 or an earlier Week 4 database, run the new `supabase-orders.sql` again. It adds the new columns and the `report_payment` function, and leaves existing orders alone.
+
+**Personal UPI IDs and pre-filled payments.** UPI's payment link format is designed for registered merchants. When the receiving account is a personal one, banks and UPI apps can decline payments that arrive with a pre-filled amount, with errors like "technical error", "risk threshold exceeded" or a security message. That is why `upi_prefill` is off by default. For a shop that takes real UPI payments, the dependable setup is a **business UPI ID** (from PhonePe, Paytm or Google Pay for Business, or a bank merchant account), with `upi_prefill` switched on. A payment gateway (for example Razorpay) is the next step up and confirms payments automatically.
+
+If a UPI payment fails inside the customer's UPI app (for example Amazon Pay says "technical error"), the link itself has done its job. Check these:
+- **Pay ₹1 by hand first.** From someone else's phone, open any UPI app, choose pay to a UPI ID, type the shop's ID and an amount yourself. If even that fails, the UPI ID or its bank cannot receive reliably, and no link or QR will fix it: use another UPI ID.
+- **Test from a different person's account.** UPI refuses a payment from an account to itself, and it often shows a vague error. Never test with the shop's own number and app.
+- **Pay ₹1 by hand first.** In any UPI app, pay ₹1 to the shop's UPI ID from someone else's phone before going live.
+- **Try another UPI app** (GPay, PhonePe, Paytm) and the QR code. Banks and apps sometimes have temporary problems or limits.
+- **Customers see the account holder's name** in their UPI app. If it differs from the shop's name, some will hesitate. A business UPI ID or QR where the name matches the shop is more trusted.
 
 Use a business UPI ID or QR where the shop has one. Cash on delivery for large custom orders carries a risk of refusal, which the COD limit is there to reduce.
 
@@ -114,6 +126,7 @@ Saved orders hold customers' names, phone numbers and addresses, so for every cl
 ## Security checklist (do this for every client)
 
 **Files**
+- `qrcode-generator.js` is the QR code library, version 2.0.4 (MIT licence), copied unchanged from npm (SHA-256 `79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c`). It sits next to `index.html`. Without it the page still works, but shows no QR code.
 - `supabase-js.umd.js` is the Supabase library, version 2.110.9 (MIT licence), copied unchanged from npm (SHA-256 `0ced6b6a809cebaf1869c87cb5e690fddf7235d2a7cc5a951d06b54d0832bf9b`). It sits next to `admin.html` and is served from your own site. To update it, download a newer release from npm, replace the file, and test the login again.
 - `_headers` is read by Netlify. It stops the site being shown inside another page and sets safe browser defaults. It must be named exactly `_headers`, with no `.txt` on the end.
 

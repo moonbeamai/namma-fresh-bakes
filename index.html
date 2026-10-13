@@ -135,6 +135,14 @@
   .confirm-pay { font-weight: 600; }
   .upi-box { margin: 8px 0; padding: 12px; border: 1px dashed var(--oxide); border-radius: 10px; background: #fff; }
   .upi-box p { margin: 8px 0 0; }
+  .qr-wrap { margin-top: 10px; text-align: center; }
+  .qr svg { display: block; width: min(260px, 100%); height: auto; margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .qr-help { font-size: 0.9rem; color: var(--muted); }
+  .pay-manual { margin-top: 14px; text-align: left; }
+  .pm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px dashed var(--line); }
+  .pm-row > div { min-width: 0; }
+  .pm-label { display: block; font-size: 0.8rem; color: var(--muted); }
+  .pm-row strong { overflow-wrap: anywhere; }
   .summary-card { margin: 16px 0 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
   .summary-card .free-hint { margin: 0 0 10px; }
   .foot-row { display: flex; align-items: center; gap: 14px; }
@@ -172,7 +180,7 @@
 const CONFIG = {
   shopName: "Namma Fresh Bakes",
   tagline: "Small-batch bakes from a Bengaluru home kitchen",
-  whatsapp: "917022238844",   // country code + number, no + or spaces
+  whatsapp: "919449923575",   // country code + number, no + or spaces
   area: "Delivery within Bengaluru. Order 1 day ahead for custom cakes.",
   leadDays: 1,                // earliest delivery date = today + this many days
   maxDays: 60,                // furthest date a customer can pick = today + this many days
@@ -337,7 +345,21 @@ const MENU = [
     <p class="confirm-pay" id="confirmPay" hidden></p>
     <div class="upi-box" id="upiBox" hidden>
       <a class="btn checkout" id="upiPay">Pay with UPI</a>
-      <p>UPI ID: <strong id="upiIdText"></strong> <button type="button" class="btn ghost sm" id="copyUpi">Copy</button></p>
+      <p class="qr-help" id="upiPhoneHelp" hidden>Button not opening your UPI app? Use the QR code or the details below.</p>
+      <button type="button" class="btn ghost checkout" id="qrToggle" hidden>Show QR code</button>
+      <div class="qr-wrap" id="qrWrap" hidden>
+        <div class="qr" id="qrBox"></div>
+        <p class="qr-help" id="qrHelp"></p>
+        <button type="button" class="btn ghost sm" id="qrSave">Save QR image</button>
+      </div>
+      <div class="pay-manual">
+        <p><strong>Or pay in any UPI app:</strong></p>
+        <div class="pm-row"><div><span class="pm-label">UPI ID</span><strong id="upiIdText"></strong></div><button type="button" class="btn ghost sm" id="copyUpi">Copy</button></div>
+        <div class="pm-row"><div><span class="pm-label">Amount</span><strong id="upiAmount"></strong></div><button type="button" class="btn ghost sm" id="copyAmount">Copy</button></div>
+        <div class="pm-row"><div><span class="pm-label">Note (so the shop can match it)</span><strong id="upiNote"></strong></div><button type="button" class="btn ghost sm" id="copyNote">Copy</button></div>
+      </div>
+      <button type="button" class="btn checkout" id="paidBtn">I've paid</button>
+      <p class="qr-help" id="paidNote" role="status" hidden></p>
     </div>
     <p>The shop can see your order. Tap below to also send it on WhatsApp, so they notice it straight away.</p>
     <a class="btn checkout" id="waConfirm" target="_blank" rel="noopener">Send on WhatsApp</a>
@@ -345,6 +367,8 @@ const MENU = [
   </div>
 </aside>
 
+<!-- QR code library v2.0.4 (MIT licence), copied unchanged from npm and served from this site -->
+<script src="qrcode-generator.js"></script>
 <script>
 /* ===== Rendering (don't edit unless you're changing how the page works) ===== */
 const rupees = n => "₹" + n.toLocaleString("en-IN");
@@ -766,7 +790,8 @@ function applySettingsRow(r) {
     cod: r.accept_cod === true,
     pickup: r.accept_pay_at_pickup === true,
     upiId: r.upi_id || "",
-    payments: r.accept_upi !== undefined
+    payments: r.accept_upi !== undefined,
+    upiPrefill: r.upi_prefill === true     // fill in the amount automatically (business UPI IDs only)
   };
 }
 const ordersCheckIsStale = () => SAVE_ORDERS && Date.now() - ordersCheckedAt > 30000;
@@ -778,8 +803,10 @@ async function fetchOrdersOpen() {
   try {
     const base = CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/shop_settings?select=";
     const opts = { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal };
-    let res = await fetch(base + "accepting_orders,min_order,delivery_charge,free_delivery_above,cod_max_total,accept_upi,accept_cod,accept_pay_at_pickup,upi_id&limit=1", opts);
-    // a database that has not been updated for payments yet does not have the newer columns
+    const PAY = "accepting_orders,min_order,delivery_charge,free_delivery_above,cod_max_total,accept_upi,accept_cod,accept_pay_at_pickup,upi_id";
+    let res = await fetch(base + PAY + ",upi_prefill&limit=1", opts);
+    // a database that has not been updated yet does not have the newer columns: ask for fewer
+    if (!res.ok) res = await fetch(base + PAY + "&limit=1", opts);
     if (!res.ok) res = await fetch(base + "accepting_orders,min_order,delivery_charge&limit=1", opts);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const rows = await res.json();
@@ -941,8 +968,76 @@ function startCheckout() {
   showPayStep();
 }
 
+// A phone can open a upi:// link; a computer cannot, so it gets the QR code instead
+const IS_PHONE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+let lastQR = null;
+let reportToken = "";   // proves to the database which order is the customer's, for the "I've paid" button
+
+// Draw the QR code as an SVG (our own copy of the qrcode-generator library does the maths)
+function renderQR(text) {
+  const box = $("qrBox");
+  box.textContent = "";
+  lastQR = null;
+  if (typeof qrcode !== "function") return false;
+  try {
+    const qr = qrcode(0, "M");
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount(), quiet = 4, size = n + quiet * 2;
+    let d = "";
+    for (let r = 0; r < n; r++) {
+      let c = 0;
+      while (c < n) {
+        if (qr.isDark(r, c)) {
+          let run = 1;
+          while (c + run < n && qr.isDark(r, c + run)) run++;
+          d += "M" + (c + quiet) + " " + (r + quiet) + "h" + run + "v1h-" + run + "z";
+          c += run;
+        } else c++;
+      }
+    }
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + size + " " + size);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "UPI QR code");
+    svg.setAttribute("shape-rendering", "crispEdges");
+    const bg = document.createElementNS(NS, "rect");
+    bg.setAttribute("width", size); bg.setAttribute("height", size); bg.setAttribute("fill", "#fff");
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d); path.setAttribute("fill", "#000");
+    svg.appendChild(bg); svg.appendChild(path);
+    box.appendChild(svg);
+    lastQR = { n, quiet, isDark: (r, c) => qr.isDark(r, c) };
+    return true;
+  } catch (e) { console.error("Could not draw the QR code:", e); return false; }
+}
+
+function saveQR() {
+  if (!lastQR) return;
+  const { n, quiet, isDark } = lastQR, scale = 10, size = (n + quiet * 2) * scale;
+  const canvas = document.createElement("canvas");
+  canvas.width = size; canvas.height = size;
+  let ctx = null;
+  try { ctx = canvas.getContext("2d"); } catch (e) { /* no canvas */ }
+  if (!ctx) { $("qrSave").hidden = true; return; }
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = "#000";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "upi-qr-" + $("confirmRef").textContent + ".png";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }, "image/png");
+}
+
 function upiLink(id, amount, ref) {
-  return "upi://pay?pa=" + id + "&pn=" + encodeURIComponent(CONFIG.shopName) + "&am=" + Number(amount).toFixed(2) + "&cu=INR&tn=" + encodeURIComponent("Order " + ref);
+  const start = "upi://pay?pa=" + id + "&pn=" + encodeURIComponent(CONFIG.shopName);
+  if (!(S && S.upiPrefill)) return start + "&cu=INR";   // personal UPI ID: the customer types the amount, which every bank accepts
+  return start + "&am=" + Number(amount).toFixed(2) + "&cu=INR&tn=" + encodeURIComponent("Order " + ref);   // business UPI ID: amount and order number filled in
 }
 
 function showConfirmation(body, payment) {
@@ -955,12 +1050,36 @@ function showConfirmation(body, payment) {
   pay.hidden = true; box.hidden = true;
   $("waConfirm").textContent = "Send on WhatsApp";
   if (payment === "UPI" && S && S.upiId) {
-    pay.textContent = "Payment: pay " + rupees(body.total) + " by UPI. Then send your order on WhatsApp with the payment screenshot, and the shop will confirm your payment.";
+    const fill = S.upiPrefill;
+    pay.textContent = fill
+      ? "Payment: pay " + rupees(body.total) + " by UPI. Then send your order on WhatsApp with the payment screenshot, and the shop will confirm your payment."
+      : "Payment: pay " + rupees(body.total) + " by UPI. In your UPI app, enter " + rupees(body.total) + " as the amount and put \"Order " + body.order_ref + "\" in the note. Then send your order on WhatsApp with the payment screenshot, and the shop will confirm your payment.";
     pay.hidden = false;
-    $("upiPay").href = upiLink(S.upiId, body.total, body.order_ref);
-    $("upiPay").textContent = "Pay " + rupees(body.total) + " with UPI";
+    const link = upiLink(S.upiId, body.total, body.order_ref);
+    $("upiPay").href = link;
+    $("upiPay").textContent = fill ? "Pay " + rupees(body.total) + " with UPI" : "Open UPI app to pay";
+    $("upiPay").hidden = !IS_PHONE;            // a computer cannot open the link: it gets the QR code instead
+    $("upiPhoneHelp").hidden = !IS_PHONE;
+    const haveQR = renderQR(link);
+    $("qrToggle").hidden = !haveQR;
+    $("qrWrap").hidden = !(haveQR && !IS_PHONE);   // computer: QR shown straight away. Phone: tap Show QR code
+    $("qrToggle").textContent = $("qrWrap").hidden ? "Show QR code" : "Hide QR code";
+    $("qrSave").hidden = false;
+    $("qrHelp").textContent = (IS_PHONE
+      ? "Scan this with another phone's UPI app, or take a screenshot and choose Scan from gallery in your UPI app."
+      : "Open any UPI app on your phone (GPay, PhonePe, Paytm and others), tap Scan, and scan this code.")
+      + (fill ? "" : " Then enter " + rupees(body.total) + " as the amount.");
     $("upiIdText").textContent = S.upiId;
-    $("copyUpi").textContent = "Copy";
+    $("upiAmount").textContent = rupees(body.total);
+    $("upiNote").textContent = "Order " + body.order_ref;
+    reportToken = pendingToken;
+    $("paidBtn").disabled = false;
+    $("paidBtn").textContent = "I've paid";
+    $("paidNote").hidden = true;
+    $("copyUpi").dataset.copy = S.upiId;
+    $("copyAmount").dataset.copy = String(body.total);
+    $("copyNote").dataset.copy = "Order " + body.order_ref;
+    ["copyUpi", "copyAmount", "copyNote"].forEach(id => { $(id).textContent = "Copy"; });
     box.hidden = false;
     $("waConfirm").textContent = "Send on WhatsApp with screenshot";
   } else if (payment === "COD") {
@@ -1030,16 +1149,58 @@ async function submitOrder(payment) {
 }
 $("payConfirm").addEventListener("click", () => { if (chosenPayment) submitOrder(chosenPayment); });
 $("payBack").addEventListener("click", () => showPanelView("cart"));
-$("copyUpi").addEventListener("click", async () => {
-  const btn = $("copyUpi"), id = $("upiIdText").textContent;
-  let done = false;
-  try { await navigator.clipboard.writeText(id); done = true; } catch (e) { /* try the older way */ }
-  if (!done) {
-    try { const r = document.createRange(); r.selectNodeContents($("upiIdText")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); done = document.execCommand("copy"); } catch (e) { /* ignore */ }
-  }
-  btn.textContent = done ? "Copied" : "Select and copy";
-  setTimeout(() => { btn.textContent = "Copy"; }, 2500);
+["copyUpi", "copyAmount", "copyNote"].forEach(id => {
+  $(id).addEventListener("click", async () => {
+    const btn = $(id), value = btn.dataset.copy || "";
+    let done = false;
+    try { await navigator.clipboard.writeText(value); done = true; } catch (e) { /* try the older way */ }
+    if (!done) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = value; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        done = document.execCommand("copy");
+        ta.remove();
+      } catch (e) { /* ignore */ }
+    }
+    btn.textContent = done ? "Copied" : "Copy failed";
+    setTimeout(() => { btn.textContent = "Copy"; }, 2500);
+  });
 });
+$("paidBtn").addEventListener("click", async () => {
+  if (!reportToken) return;
+  const btn = $("paidBtn"), note = $("paidNote");
+  btn.disabled = true;
+  btn.textContent = "Telling the shop…";
+  note.hidden = true;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/rpc/report_payment", {
+      method: "POST",
+      headers: { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_token: reportToken }),
+      signal: ctrl.signal
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    btn.textContent = "Payment reported ✓";
+    note.textContent = "Thanks! The shop has been told. They will confirm your payment once they see it in their UPI app. Please also send the screenshot on WhatsApp.";
+  } catch (e) {
+    console.error("Could not report the payment:", e);
+    btn.disabled = false;
+    btn.textContent = "I've paid";
+    note.textContent = "We couldn't tell the shop automatically. Please send the payment screenshot on WhatsApp.";
+  } finally {
+    clearTimeout(timer);
+    note.hidden = false;
+  }
+});
+$("qrToggle").addEventListener("click", () => {
+  const show = $("qrWrap").hidden;
+  $("qrWrap").hidden = !show;
+  $("qrToggle").textContent = show ? "Hide QR code" : "Show QR code";
+});
+$("qrSave").addEventListener("click", saveQR);
 $("placeBtn").addEventListener("click", startCheckout);
 $("confirmDone").addEventListener("click", closeCart);
 
