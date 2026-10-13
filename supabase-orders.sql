@@ -112,6 +112,12 @@ alter table shop_settings
   add column if not exists accept_pay_at_pickup boolean not null default true,
   add column if not exists upi_id text
     check (upi_id is null or upi_id ~ '^[A-Za-z0-9._-]{2,64}@[A-Za-z0-9]{2,32}$');
+alter table shop_settings
+  add column if not exists upi_prefill boolean not null default false;
+-- upi_prefill: false = the UPI link and QR code only carry the shop's UPI ID, and the customer types the
+--              amount (this is how a personal UPI ID is normally paid, and it works with all banks).
+--              true  = the amount and order number are filled in automatically. Use this only with a
+--              BUSINESS UPI ID: banks and apps often decline pre-filled payments to personal accounts.
 -- free_delivery_above: items total at or above this get free delivery (0 = never free)
 -- cod_max_total:       largest order total allowed for cash on delivery (0 = no limit)
 
@@ -120,8 +126,10 @@ alter table orders
     check (payment_method is null or payment_method in ('UPI', 'COD', 'PAY_AT_PICKUP')),
   add column if not exists payment_status text not null default 'unpaid'
     check (payment_status in ('unpaid', 'paid', 'refunded')),
-  add column if not exists paid_at timestamptz;
+  add column if not exists paid_at timestamptz,
+  add column if not exists payment_claimed_at timestamptz;
 -- orders placed before this update have payment_method empty
+-- payment_claimed_at: when the customer tapped "I've paid" (a report from the customer, not proof: the owner checks their UPI app)
 
 
 -- 4. place_order(): the only way a customer creates an order
@@ -286,3 +294,35 @@ $$;
 
 revoke all on function place_order(jsonb) from public;
 grant execute on function place_order(jsonb) to anon, authenticated;
+
+
+-- 5. report_payment(): the customer taps "I've paid" after a UPI payment.
+--    It only marks the order as "payment reported". The owner still checks the UPI app and marks it paid.
+--    The customer's page proves which order is theirs with the secret token it made when placing the order.
+create or replace function report_payment(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v orders%rowtype;
+begin
+  if p_token is null or p_token !~ '^[A-Za-z0-9-]{16,64}$' then
+    raise exception 'INVALID_ORDER';
+  end if;
+
+  select * into v from orders where client_token = p_token;
+  if not found then raise exception 'ORDER_NOT_FOUND'; end if;
+  if v.payment_method is distinct from 'UPI' or v.status = 'cancelled' then raise exception 'NOT_PAYABLE'; end if;
+
+  if v.payment_status = 'unpaid' and v.payment_claimed_at is null then
+    update orders set payment_claimed_at = now() where id = v.id;
+  end if;
+
+  return jsonb_build_object('order_ref', v.order_ref, 'payment_status', v.payment_status);
+end;
+$$;
+
+revoke all on function report_payment(text) from public;
+grant execute on function report_payment(text) to anon, authenticated;

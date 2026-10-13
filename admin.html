@@ -94,8 +94,13 @@
   .o-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .pay-unpaid { background: #f8e6c2; color: #7a4b00; }
   .pay-paid { background: #d9efdd; color: #1f5f2e; }
+  .pay-reported { background: #d6e6f7; color: #164a82; }
+  .o-claim { padding: 8px 10px; border-left: 3px solid #164a82; background: #eaf2fb; color: #164a82; }
+  .msg-link { margin-left: 4px; color: inherit; font-weight: 700; text-decoration: underline; }
   .pay-refunded { background: #e6e0d4; color: #5a4d44; }
   .o-refund { padding: 8px 10px; border-left: 3px solid var(--bad); background: #fbe3df; color: #8c1c13; }
+  .set-h { margin: 20px 0 4px; font-size: 1.25rem; color: var(--oxide); }
+  .field p.muted { margin: 4px 0 0; }
   .btn.sm { padding: 7px 14px; font-size: 0.9rem; text-decoration: none; }
   a.btn.ghost { border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); }
   select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
@@ -156,6 +161,7 @@ const CONFIG = {
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tabOrders" aria-selected="true" aria-controls="ordersView">Orders <span class="badge st-new" id="newBadge" hidden></span></button>
       <button type="button" role="tab" id="tabMenu" aria-selected="false" aria-controls="menuView">Menu</button>
+      <button type="button" role="tab" id="tabSettings" aria-selected="false" aria-controls="settingsView">Settings</button>
     </div>
 
     <div id="ordersView" role="tabpanel" aria-labelledby="tabOrders">
@@ -183,6 +189,49 @@ const CONFIG = {
           <button type="button" class="btn ghost danger" id="purgeBtn">Delete old finished orders</button>
         </div>
       </details>
+    </div>
+
+    <div id="settingsView" role="tabpanel" aria-labelledby="tabSettings" hidden>
+      <form id="settingsForm" novalidate>
+        <h2 class="set-h">Payments</h2>
+        <p class="muted">How customers can pay, and where UPI payments go.</p>
+        <div class="field">
+          <label for="sUpiId">Your UPI ID</label>
+          <input id="sUpiId" type="text" maxlength="100" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="shopname@okaxis">
+          <p class="muted">Customers who choose UPI pay this ID. UPI is not offered until you add one.</p>
+        </div>
+        <div class="field sw-wrap"><input id="sUpi" type="checkbox" class="sw"><label for="sUpi" class="sw-label">Accept UPI</label></div>
+        <div class="field sw-wrap"><input id="sPrefill" type="checkbox" class="sw"><label for="sPrefill" class="sw-label">Fill in the UPI amount automatically</label></div>
+        <p class="muted">Turn this on only if the UPI ID above is a <strong>business</strong> UPI ID (from PhonePe, Paytm or Google Pay for Business, or a bank's merchant account). With a personal UPI ID, banks and UPI apps often decline payments that have the amount filled in, so leave it off: customers then type the amount themselves, which always works.</p>
+        <div class="field sw-wrap"><input id="sCod" type="checkbox" class="sw"><label for="sCod" class="sw-label">Accept cash on delivery</label></div>
+        <div class="field sw-wrap"><input id="sPickup" type="checkbox" class="sw"><label for="sPickup" class="sw-label">Accept pay at pickup</label></div>
+        <div class="field">
+          <label for="sCodMax">Cash on delivery limit (₹)</label>
+          <input id="sCodMax" type="number" inputmode="numeric" min="0" max="100000" step="1">
+          <p class="muted">Cash on delivery is not offered above this order total. 0 means no limit.</p>
+        </div>
+        <h2 class="set-h">Delivery and minimum order</h2>
+        <div class="field">
+          <label for="sMin">Minimum order (₹)</label>
+          <input id="sMin" type="number" inputmode="numeric" min="0" max="100000" step="1">
+          <p class="muted">Customers must order at least this much in items. 0 means no minimum.</p>
+        </div>
+        <div class="field">
+          <label for="sDelivery">Delivery charge (₹)</label>
+          <input id="sDelivery" type="number" inputmode="numeric" min="0" max="100000" step="1">
+        </div>
+        <div class="field">
+          <label for="sFree">Free delivery above (₹)</label>
+          <input id="sFree" type="number" inputmode="numeric" min="0" max="100000" step="1">
+          <p class="muted">Orders with items worth this much or more get free delivery. 0 means never free.</p>
+        </div>
+        <p class="o-refund" id="settingsWarn" role="status" hidden></p>
+        <p class="muted" id="settingsNote"></p>
+        <div class="o-actions">
+          <button type="submit" class="btn" id="settingsSave" disabled>Save settings</button>
+          <button type="button" class="btn ghost" id="settingsUndo" disabled>Undo changes</button>
+        </div>
+      </form>
     </div>
 
     <div id="menuView" role="tabpanel" aria-labelledby="tabMenu" hidden>
@@ -222,6 +271,7 @@ const CONFIG = {
   var BASE_TITLE = "Admin";
   var orders = [];        // the order rows
   var knownIds = null;    // ids seen so far, to spot new orders after a refresh
+  var knownClaims = {};   // orders whose payment report has already been shown
   var filter = "todo";
   var pollTimer = null;
 
@@ -257,6 +307,16 @@ const CONFIG = {
     box.hidden = false;
     clearTimeout(msgTimer);
     msgTimer = setTimeout(function () { box.hidden = true; }, type === "error" ? 9000 : 4000);
+  }
+  function sayLink(text, label, href) {
+    var box = $("msg");
+    box.textContent = "";
+    box.appendChild(document.createTextNode(text + " "));
+    box.appendChild(h("a", { href: href, target: "_blank", rel: "noopener", class: "msg-link" }, label));
+    box.className = "msg success";
+    box.hidden = false;
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(function () { box.hidden = true; }, 20000);
   }
   $("msg").addEventListener("click", function () { $("msg").hidden = true; });
 
@@ -312,16 +372,19 @@ const CONFIG = {
     showView(!!user);
     if (user) {
       $("who").textContent = "Logged in as " + user.email;
-      showTab(location.hash === "#menu" ? "menu" : "orders");
-      setTimeout(function () { loadItems(); loadOrders(false); loadSettings(); startPolling(); }, 0);   // not inside the auth callback
+      showTab(location.hash === "#menu" ? "menu" : location.hash === "#settings" ? "settings" : "orders");
+      setTimeout(function () { loadItems(); loadOrders(false); loadSettings(); loadShopSettings(); startPolling(); }, 0);   // not inside the auth callback
     } else {
       stopPolling();
       items = [];
       orders = [];
       knownIds = null;
+      knownClaims = {};
       $("list").textContent = "";
       $("orderList").textContent = "";
       $("chips").textContent = "";
+      shopRow = null;
+      $("settingsForm").reset();
       $("newBadge").hidden = true;
       document.title = BASE_TITLE;
       $("password").value = "";
@@ -515,15 +578,18 @@ const CONFIG = {
 
   /* ---------- tabs ---------- */
   function showTab(name) {
-    var onOrders = name !== "menu";
-    $("ordersView").hidden = !onOrders;
-    $("menuView").hidden = onOrders;
-    $("tabOrders").setAttribute("aria-selected", onOrders ? "true" : "false");
-    $("tabMenu").setAttribute("aria-selected", onOrders ? "false" : "true");
-    try { history.replaceState(null, "", onOrders ? location.pathname + location.search : "#menu"); } catch (e) { /* ignore */ }
+    var which = (name === "menu" || name === "settings") ? name : "orders";
+    $("ordersView").hidden = which !== "orders";
+    $("menuView").hidden = which !== "menu";
+    $("settingsView").hidden = which !== "settings";
+    $("tabOrders").setAttribute("aria-selected", which === "orders" ? "true" : "false");
+    $("tabMenu").setAttribute("aria-selected", which === "menu" ? "true" : "false");
+    $("tabSettings").setAttribute("aria-selected", which === "settings" ? "true" : "false");
+    try { history.replaceState(null, "", which === "orders" ? location.pathname + location.search : "#" + which); } catch (e) { /* ignore */ }
   }
   $("tabOrders").addEventListener("click", function () { showTab("orders"); });
   $("tabMenu").addEventListener("click", function () { showTab("menu"); });
+  $("tabSettings").addEventListener("click", function () { showTab("settings"); });
 
   /* ---------- orders ---------- */
   var STATUS_LABEL = { "new": "New", confirmed: "Confirmed", ready: "Ready", completed: "Completed", cancelled: "Cancelled" };
@@ -595,8 +661,16 @@ const CONFIG = {
     }
     if (o.status === "ready") return who + ref + " is ready" + (o.order_type === "Pickup" ? " for pickup." : " and will be on its way soon.");
     if (o.status === "completed") return who + "thank you for ordering from " + CONFIG.shopName + "!";
-    if (o.status === "cancelled") return who + "sorry, we couldn't take " + ref + ". Please message us if you'd like to order again.";
+    if (o.status === "cancelled") return who + ref + " from " + CONFIG.shopName + " has been cancelled. If any money was deducted, it will be refunded to you. Sorry for the trouble.";
     return who + "this is " + CONFIG.shopName + ". We have received " + ref + ".";
+  }
+
+  function isReported(o) { return !!o.payment_method && o.payment_status === "unpaid" && !!o.payment_claimed_at && o.status !== "cancelled"; }
+  function customerWaHref(o) {
+    if (!/^[6-9][0-9]{9}$/.test(String(o.customer_phone))) return "";
+    var msg;
+    try { msg = encodeURIComponent(customerMessage(o)); } catch (e) { msg = ""; }
+    return "https://wa.me/91" + o.customer_phone + "?text=" + msg;
   }
 
   function orderCard(o) {
@@ -613,13 +687,14 @@ const CONFIG = {
       h("div", { class: "o-head" },
         h("span", { class: "o-ref" }, o.order_ref),
         h("span", { class: "badge st-" + o.status }, STATUS_LABEL[o.status] || o.status),
-        o.payment_method ? h("span", { class: "badge pay-" + o.payment_status }, PAY_STATUS[o.payment_status] || o.payment_status) : null,
+        o.payment_method ? (isReported(o) ? h("span", { class: "badge pay-reported" }, "Payment reported") : h("span", { class: "badge pay-" + o.payment_status }, PAY_STATUS[o.payment_status] || o.payment_status)) : null,
         h("span", { class: "muted" }, fmtCreated(o.created_at))),
       h("p", { class: "o-who" }, o.customer_name + (phoneOk ? " · " + o.customer_phone : "")),
       h("p", null, o.order_type + (when.length ? " · " + when.join(" · ") : "")),
       o.payment_method ? h("p", null, "Payment: " + (PAY_LABEL[o.payment_method] || o.payment_method) + " · " + (PAY_STATUS[o.payment_status] || "") + (o.payment_status === "paid" && o.paid_at ? " (" + fmtCreated(o.paid_at) + ")" : "")) : null,
       o.address ? h("p", null, "Address: " + o.address) : null,
       o.notes ? h("p", null, "Note: " + o.notes) : null,
+      isReported(o) ? h("p", { class: "o-claim" }, "The customer says they paid " + money(o.total) + " (" + fmtCreated(o.payment_claimed_at) + "). Check your UPI app for order " + o.order_ref + ", then tap Mark paid.") : null,
       (o.payment_method && o.status === "cancelled" && o.payment_status === "paid") ? h("p", { class: "o-refund" }, "Refund due: " + money(o.total) + " was paid for this cancelled order. Refund the customer, then mark it refunded.") : null,
       h("ul", { class: "o-items" }, items.map(function (it) {
         return h("li", null, h("span", null, Number(it.qty) + " × " + String(it.name)), h("span", null, money(Number(it.price) * Number(it.qty))));
@@ -655,10 +730,8 @@ const CONFIG = {
       if (pb) actions.appendChild(pb);
     }
     if (phoneOk) {
-      var msg;
-      try { msg = encodeURIComponent(customerMessage(o)); } catch (e) { msg = ""; }
       actions.appendChild(h("a", { class: "btn ghost sm", href: "tel:+91" + o.customer_phone }, "Call"));
-      actions.appendChild(h("a", { class: "btn ghost sm", href: "https://wa.me/91" + o.customer_phone + "?text=" + msg, target: "_blank", rel: "noopener" }, "WhatsApp"));
+      actions.appendChild(h("a", { class: "btn ghost sm", href: customerWaHref(o), target: "_blank", rel: "noopener" }, "WhatsApp"));
     }
     if (isActive(o)) {
       var cb = h("button", { type: "button", class: "btn ghost danger sm" }, "Cancel order");
@@ -695,26 +768,27 @@ const CONFIG = {
     }
     shown.forEach(function (o) { list.appendChild(orderCard(o)); });
     $("ordersNote").textContent = orders.length >= 300 ? "Showing the latest 300 orders." : "";
-    var fresh = orders.filter(function (o) { return o.status === "new"; }).length;
+    var fresh = orders.filter(function (o) { return o.status === "new" || isReported(o); }).length;   // new orders and payment reports
     $("newBadge").hidden = !fresh;
     $("newBadge").textContent = String(fresh);
     document.title = (fresh ? "(" + fresh + ") " : "") + BASE_TITLE;
   }
 
   var ORDER_COLS = "id,order_ref,created_at,status,customer_name,customer_phone,order_type,address,requested_date,requested_time,notes,items,subtotal,delivery_charge,total";
-  function queryOrders(withPay) {
+  var claimColOk = false;   // true when the database has the payment_claimed_at column
+  // level 2: with payment and "payment reported" columns, 1: payment columns only, 0: neither (older databases)
+  function queryOrders(level) {
     return sb.from("orders")
-      .select(ORDER_COLS + (withPay ? ",payment_method,payment_status,paid_at" : ""))
+      .select(ORDER_COLS + (level >= 1 ? ",payment_method,payment_status,paid_at" : "") + (level >= 2 ? ",payment_claimed_at" : ""))
       .order("created_at", { ascending: false })
       .limit(300);
   }
+  function isColErr(res) { return !!res.error && (res.error.code === "42703" || /payment_|does not exist/i.test(String(res.error.message || ""))); }
   function loadOrders(quiet) {
     if (!sb || !currentUser) return;
-    queryOrders(true)
-      .then(function (res) {   // a database not yet updated for payments has no payment columns: ask again without them
-        if (res.error && (res.error.code === "42703" || /payment_/.test(String(res.error.message || "")))) return queryOrders(false);
-        return res;
-      })
+    queryOrders(2)
+      .then(function (res) { claimColOk = true; return isColErr(res) ? (claimColOk = false, queryOrders(1)) : res; })
+      .then(function (res) { return isColErr(res) ? queryOrders(0) : res; })
       .then(function (res) {
         if (!currentUser) return;
         if (res.error) {
@@ -724,13 +798,18 @@ const CONFIG = {
           return;
         }
         var fresh = res.data || [];
+        var told = [];
         if (knownIds) {
           var added = fresh.filter(function (o) { return !knownIds[o.id] && o.status === "new"; });
-          if (added.length === 1) say("New order " + added[0].order_ref + " from " + added[0].customer_name + ".", "success");
-          else if (added.length > 1) say(added.length + " new orders.", "success");
+          if (added.length === 1) told.push("New order " + added[0].order_ref + " from " + added[0].customer_name + ".");
+          else if (added.length > 1) told.push(added.length + " new orders.");
+          var reported = fresh.filter(function (o) { return isReported(o) && !knownClaims[o.id]; });
+          reported.forEach(function (o) { told.push("Payment reported for order " + o.order_ref + " (" + money(o.total) + "). Check your UPI app, then tap Mark paid."); });
+          if (told.length) say(told.join(" "), "success");
         }
         knownIds = {};
-        fresh.forEach(function (o) { knownIds[o.id] = true; });
+        knownClaims = {};
+        fresh.forEach(function (o) { knownIds[o.id] = true; if (isReported(o)) knownClaims[o.id] = true; });
         orders = fresh;
         renderOrders();
       });
@@ -743,20 +822,25 @@ const CONFIG = {
       if (res.error) { handleError(res.error, "Couldn't update the order. Please try again."); return; }
       if (!res.data || !res.data.length) { say("Couldn't update the order. Please log out and log in again.", "error"); return; }
       o.status = res.data[0].status;
-      say("Order " + o.order_ref + " is now " + (STATUS_LABEL[o.status] || o.status).toLowerCase() + ".", "success");
       renderOrders();
+      var text = "Order " + o.order_ref + " is now " + (STATUS_LABEL[o.status] || o.status).toLowerCase() + ".";
+      var wa = o.status === "cancelled" ? customerWaHref(o) : "";
+      if (wa) sayLink(text + " The customer has not been told yet.", "Tell them on WhatsApp", wa);   // WhatsApp opens with the cancellation message already written
+      else say(text, "success");
     });
   }
 
   function setPayment(o, status, btn) {
     busy(btn, true);
     var fields = { payment_status: status, paid_at: status === "paid" ? new Date().toISOString() : null };
+    if (claimColOk && status === "unpaid") fields.payment_claimed_at = null;
     sb.from("orders").update(fields).eq("id", o.id).select().then(function (res) {
       busy(btn, false);
       if (res.error) { handleError(res.error, "Couldn't update the payment. Please try again."); return; }
       if (!res.data || !res.data.length) { say("Couldn't update the payment. Please log out and log in again.", "error"); return; }
       o.payment_status = res.data[0].payment_status;
       o.paid_at = res.data[0].paid_at;
+      if (claimColOk && "payment_claimed_at" in res.data[0]) o.payment_claimed_at = res.data[0].payment_claimed_at;
       say("Order " + o.order_ref + " marked " + (PAY_STATUS[o.payment_status] || o.payment_status).toLowerCase() + ".", "success");
       renderOrders();
     });
@@ -820,6 +904,122 @@ const CONFIG = {
       if (!res.count) { say("Couldn't delete. Please log out and log in again.", "error"); return; }
       say("Deleted " + res.count + (res.count === 1 ? " old order." : " old orders."), "success");
       loadOrders(true);
+    });
+  });
+
+  /* ---------- shop settings: payments, delivery, minimum order ---------- */
+  var shopRow = null;          // the values last loaded from, or saved to, the database
+  var hasPayCols = true;       // false on a database that has not been updated for payments yet
+  var hasPrefillCol = true;    // false on a database without the upi_prefill column
+  var UPI_RE = /^[A-Za-z0-9._-]{2,64}@[A-Za-z0-9]{2,32}$/;
+  var AMOUNTS = [["sCodMax", "cod_max_total", "cash on delivery limit"], ["sMin", "min_order", "minimum order"],
+                 ["sDelivery", "delivery_charge", "delivery charge"], ["sFree", "free_delivery_above", "free delivery amount"]];
+
+  function fillSettingsForm(r) {
+    $("sUpiId").value = r.upi_id || "";
+    $("sUpi").checked = !!r.accept_upi;
+    $("sPrefill").checked = !!r.upi_prefill;
+    $("sCod").checked = !!r.accept_cod;
+    $("sPickup").checked = !!r.accept_pay_at_pickup;
+    AMOUNTS.forEach(function (a) { $(a[0]).value = r[a[1]] === undefined || r[a[1]] === null ? "" : String(r[a[1]]); });
+    updateSettingsState();
+  }
+
+  function readSettingsForm() {
+    var v = { upi_id: $("sUpiId").value.trim(), accept_upi: $("sUpi").checked, upi_prefill: $("sPrefill").checked, accept_cod: $("sCod").checked, accept_pay_at_pickup: $("sPickup").checked };
+    AMOUNTS.forEach(function (a) { v[a[1]] = $(a[0]).value.trim(); });
+    return v;
+  }
+
+  function settingsDirty() {
+    if (!shopRow) return false;
+    var v = readSettingsForm();
+    if (v.upi_id !== (shopRow.upi_id || "")) return true;
+    if (hasPayCols && hasPrefillCol && v.upi_prefill !== !!shopRow.upi_prefill) return true;
+    if (hasPayCols && (v.accept_upi !== !!shopRow.accept_upi || v.accept_cod !== !!shopRow.accept_cod || v.accept_pay_at_pickup !== !!shopRow.accept_pay_at_pickup)) return true;
+    return AMOUNTS.some(function (a) { return v[a[1]] !== (shopRow[a[1]] === undefined || shopRow[a[1]] === null ? "" : String(shopRow[a[1]])); });
+  }
+
+  // Warn about combinations that would stop customers from ordering
+  function updateSettingsState() {
+    var d = settingsDirty();
+    $("settingsSave").disabled = !d;
+    $("settingsUndo").disabled = !d;
+    var v = readSettingsForm(), warn = "";
+    if (hasPayCols) {
+      var upiOk = v.accept_upi && UPI_RE.test(v.upi_id);
+      if (v.accept_upi && !upiOk) warn = "UPI is switched on but there is no valid UPI ID yet, so customers will not see it. ";
+      if (!upiOk && !v.accept_cod) warn += "Delivery customers would have no way to pay, so they could not place orders. ";
+      if (!upiOk && !v.accept_pay_at_pickup) warn += "Pickup customers would have no way to pay, so they could not place orders.";
+    }
+    $("settingsWarn").textContent = warn.trim();
+    $("settingsWarn").hidden = !warn;
+    $("settingsNote").textContent = hasPayCols ? "" : "Payment settings need the latest supabase-orders.sql to be run in Supabase. Until then, only the amounts below can be changed.";
+    ["sUpiId", "sUpi", "sCod", "sPickup", "sCodMax", "sFree"].forEach(function (id) { $(id).disabled = !hasPayCols; });
+    $("sPrefill").disabled = !hasPayCols || !hasPrefillCol;
+  }
+
+  function isColumnError(err) { return !!err && (err.code === "42703" || /does not exist|column/i.test(String(err.message || ""))); }
+  function loadShopSettings() {
+    var full = "accepting_orders,min_order,delivery_charge,free_delivery_above,cod_max_total,accept_upi,accept_cod,accept_pay_at_pickup,upi_id";
+    sb.from("shop_settings").select(full + ",upi_prefill").limit(1).then(function (res) {
+      if (isColumnError(res.error)) { hasPrefillCol = false; return sb.from("shop_settings").select(full).limit(1); }   // no upi_prefill column yet
+      hasPrefillCol = true;
+      return res;
+    }).then(function (res) {
+      if (isColumnError(res.error)) {                // no payment columns at all yet
+        hasPayCols = false; hasPrefillCol = false;
+        return sb.from("shop_settings").select("accepting_orders,min_order,delivery_charge").limit(1);
+      }
+      hasPayCols = true;
+      return res;
+    }).then(function (res) {
+      if (!currentUser) return;
+      if (res.error || !res.data || !res.data.length) { $("settingsNote").textContent = "Shop settings could not be loaded. Run supabase-orders.sql in Supabase, then reload this page."; $("settingsSave").disabled = true; return; }
+      shopRow = res.data[0];
+      fillSettingsForm(shopRow);
+    });
+  }
+
+  function validateSettings(v) {
+    var out = {};
+    if (hasPayCols) {
+      if (v.upi_id && !UPI_RE.test(v.upi_id)) return { error: "That UPI ID doesn't look right. It should look like shopname@okaxis." };
+      out.upi_id = v.upi_id || null;
+      out.accept_upi = v.accept_upi; out.accept_cod = v.accept_cod; out.accept_pay_at_pickup = v.accept_pay_at_pickup;
+      if (hasPrefillCol) out.upi_prefill = v.upi_prefill;
+    }
+    for (var i = 0; i < AMOUNTS.length; i++) {
+      var key = AMOUNTS[i][1], label = AMOUNTS[i][2];
+      if (!hasPayCols && (key === "cod_max_total" || key === "free_delivery_above")) continue;
+      if (!/^\d+$/.test(v[key])) return { error: "Enter a whole number of rupees for the " + label + " (0 is fine)." };
+      if (Number(v[key]) > 100000) return { error: "The " + label + " looks too high. Please check it." };
+      out[key] = Number(v[key]);
+    }
+    return { value: out };
+  }
+
+  ["input", "change"].forEach(function (ev) { $("settingsForm").addEventListener(ev, updateSettingsState); });
+  $("settingsUndo").addEventListener("click", function () { if (shopRow) fillSettingsForm(shopRow); });
+  $("settingsForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!shopRow || !settingsDirty()) return;
+    var r = validateSettings(readSettingsForm());
+    if (r.error) { say(r.error, "error"); return; }
+    var btn = $("settingsSave");
+    busy(btn, true);
+    sb.from("shop_settings").update(r.value).eq("id", true).select().then(function (res) {
+      busy(btn, false);
+      if (res.error) {
+        if (res.error.code === "23514") say("One of the values is not allowed. Check the UPI ID and the amounts.", "error");
+        else handleError(res.error, "Couldn't save the settings. Please try again.");
+        updateSettingsState();
+        return;
+      }
+      if (!res.data || !res.data.length) { say("Couldn't save the settings. Please log out and log in again.", "error"); updateSettingsState(); return; }
+      shopRow = res.data[0];
+      fillSettingsForm(shopRow);
+      say("Settings saved.", "success");
     });
   });
 

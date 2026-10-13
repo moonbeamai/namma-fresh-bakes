@@ -1068,7 +1068,8 @@ function showConfirmation(body, payment) {
     $("qrHelp").textContent = (IS_PHONE
       ? "Scan this with another phone's UPI app, or take a screenshot and choose Scan from gallery in your UPI app."
       : "Open any UPI app on your phone (GPay, PhonePe, Paytm and others), tap Scan, and scan this code.")
-      + (fill ? "" : " Then enter " + rupees(body.total) + " as the amount.");
+      + (fill ? "" : " Then enter " + rupees(body.total) + " as the amount.")
+      + (IS_PHONE && body.total > 2000 ? " Some UPI apps stop a payment made from a screenshot at ₹2,000. If yours does, scan this QR from another phone or screen, or pay to the UPI ID below." : "");
     $("upiIdText").textContent = S.upiId;
     $("upiAmount").textContent = rupees(body.total);
     $("upiNote").textContent = "Order " + body.order_ref;
