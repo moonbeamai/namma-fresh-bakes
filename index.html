@@ -329,7 +329,7 @@ const MENU = [
     </div>
   </div>
   <div class="paystep" id="payStep" hidden>
-    <h3>How would you like to pay?</h3>
+    <h3 id="payTitle">How would you like to pay?</h3>
     <p class="pay-total" id="payTotal"></p>
     <div id="payOptions" role="radiogroup" aria-label="Payment method"></div>
     <p class="notice" id="payNotice" role="alert" hidden></p>
@@ -338,7 +338,7 @@ const MENU = [
   </div>
   <div class="confirm" id="confirm" hidden>
     <p class="confirm-tick" aria-hidden="true">&#10003;</p>
-    <h3>Your order is saved</h3>
+    <h3 id="confirmTitle" tabindex="-1">Your order is saved</h3>
     <p>Order number</p>
     <p class="ref" id="confirmRef"></p>
     <p id="confirmSummary"></p>
@@ -363,6 +363,7 @@ const MENU = [
     </div>
     <p>The shop can see your order. Tap below to also send it on WhatsApp, so they notice it straight away.</p>
     <a class="btn checkout" id="waConfirm" target="_blank" rel="noopener">Send on WhatsApp</a>
+    <button type="button" class="btn ghost checkout" id="changePay">Change payment method</button>
     <button type="button" class="btn ghost checkout" id="confirmDone">Done</button>
   </div>
 </aside>
@@ -505,12 +506,13 @@ function renderBar() {
 }
 
 const PAY_TEXT = { UPI: "UPI (I'll send the payment screenshot)", COD: "Cash on delivery", PAY_AT_PICKUP: "Pay at pickup" };
-function orderLink(t, ref, payment) {
-  const lines = Object.keys(cart).map(id => {
+function orderLink(t, ref, payment, snap) {
+  // snap is a saved copy of a placed order (its item lines and details), used after the cart has been emptied
+  const lines = snap ? snap.lines : Object.keys(cart).map(id => {
     const item = MENU_BY_ID[id], q = cart[id];
     return `• ${q} × ${item.name} — ${rupees(q * item.price)}`;
   });
-  const d = readDetails();
+  const d = snap ? snap.d : readDetails();
   const text = [
     `Hi ${CONFIG.shopName}, I'd like to order:`,
     ...(ref ? ["Order no. " + ref] : []),
@@ -609,9 +611,11 @@ function openCart() {
   $("overlay").classList.add("open");
   document.body.classList.add("lock");
   $("closeCart").focus();
-  try { history.pushState({ cart: true }, ""); } catch (e) { /* history unavailable */ }   // so the phone's Back button closes the cart
+  try { history.pushState({ cart: true, view: "cart", depth: 1 }, ""); } catch (e) { /* history unavailable */ }   // so the phone's Back button closes the cart
 }
 function hidePanel() {
+  placedOrder = null;
+  payMode = "new";
   showConfirm(false);
   $("panel").classList.remove("open");
   $("overlay").classList.remove("open");
@@ -620,10 +624,19 @@ function hidePanel() {
 }
 function closeCart() {
   if (!panelIsOpen()) return;
-  if (history.state && history.state.cart) history.back();   // the popstate listener below hides the panel
+  const st = history.state;
+  if (st && st.cart) history.go(-(st.depth || 1));   // undo every step this panel added; the popstate listener below hides it
   else hidePanel();
 }
-window.addEventListener("popstate", () => { if (panelIsOpen()) hidePanel(); });
+// The phone's Back button steps back one screen: confirmation -> payment choice -> cart -> closed
+window.addEventListener("popstate", () => {
+  const st = history.state;
+  if (!(st && st.cart)) { if (panelIsOpen()) hidePanel(); return; }
+  if (!panelIsOpen()) return;
+  if (st.view === "pay") showPayStep(placedOrder ? "change" : "new", false);
+  else if (st.view === "confirm" && placedOrder) { fillConfirmation(placedOrder); showPanelView("confirm"); }
+  else showPanelView("cart");
+});
 
 $("openCart").onclick = openCart;
 $("closeCart").onclick = closeCart;
@@ -852,7 +865,8 @@ const ORDER_ERRORS = {
   INVALID_TEXT: "Your note or time is too long. Please shorten it.",
   INVALID_ORDER: "Sorry, we couldn't process that order. Please reload the page and try again.",
   INVALID_PAYMENT: "That payment option isn't available any more. Please choose another.",
-  COD_LIMIT: "Cash on delivery isn't available for orders this large. Please choose UPI."
+  COD_LIMIT: "Cash on delivery isn't available for orders this large. Please choose UPI.",
+  ORDER_LOCKED: "The shop has already confirmed this order or received a payment report, so it can't be changed here. Please message the shop on WhatsApp."
 };
 
 function newToken() {
@@ -880,6 +894,8 @@ function showPanelView(v) {
   $("payStep").hidden = v !== "pay";
   $("confirm").hidden = v !== "confirm";
   $("panelTitle").textContent = v === "confirm" ? "Order placed" : v === "pay" ? "Payment" : "Your order";
+  if (v === "pay") $("payStep").scrollTop = 0;       // a new screen starts at its top
+  if (v === "confirm") $("confirm").scrollTop = 0;
 }
 function showConfirm(on) { showPanelView(on ? "confirm" : "cart"); }
 
@@ -892,7 +908,7 @@ async function handleOrderError(e) {
   if (code === "ORDERS_PAUSED") { ordersOpen = false; ordersCheckedAt = Date.now(); applyOrdersOpen(); return; }
   if (code === "INVALID_PAYMENT" || code === "COD_LIMIT") {   // the payment options changed: refresh them and let the customer choose again
     await fetchOrdersOpen();
-    showPayStep();
+    showPayStep("new", false);
     $("payNotice").textContent = ORDER_ERRORS[code];
     $("payNotice").hidden = false;
     return;
@@ -906,7 +922,7 @@ async function handleOrderError(e) {
     fallbackMode = true;
     orderMsg = "We couldn't save your order online. You can still send it to the shop on WhatsApp.";
   }
-  showPanelView("cart");
+  leavePayStep();
   onCartChange();
 }
 
@@ -925,34 +941,63 @@ function paymentOptions(type, total) {
   return out;
 }
 
-function showPayStep() {
-  const t = orderTotals(), type = currentType();
-  const opts = paymentOptions(type, t.total);
+let payMode = "new";      // "new": choosing a method for an order being placed. "change": changing it on an order already placed
+let placedOrder = null;   // the order just placed: { ref, token, type, subtotal, delivery, total, payment, snap }
+
+// One browser-history entry per screen, so Back steps back through them
+function pushView(view) {
+  try {
+    const depth = (history.state && history.state.cart ? (history.state.depth || 1) : 0) + 1;
+    history.pushState({ cart: true, view, depth }, "");
+  } catch (e) { /* history unavailable */ }
+}
+function leavePayStep() {   // back to the cart, keeping the Back button in step with what is on screen
+  if (history.state && history.state.view === "pay") history.back();
+  else showPanelView("cart");
+}
+
+function showPayStep(mode, push) {
+  payMode = mode === "change" && placedOrder ? "change" : "new";
+  const change = payMode === "change", po = placedOrder;
+  const type = change ? po.type : currentType();
+  const total = change ? po.total : orderTotals().total;
+  const opts = paymentOptions(type, total);
   chosenPayment = null;
-  $("payTotal").textContent = type + " · Total " + rupees(t.total);
+  $("payTitle").textContent = change ? "Change how you pay" : "How would you like to pay?";
+  $("payTotal").textContent = (change ? "Order " + po.ref + " · " : "") + type + " · Total " + rupees(total);
   $("payNotice").hidden = true;
+  $("payConfirm").textContent = change ? "Change payment method" : "Confirm order";
   $("payConfirm").disabled = true;
+  $("payBack").textContent = change ? "Keep how I'm paying" : "Back";
   const box = $("payOptions");
   box.textContent = "";
   const enabled = opts.filter(o => !o.disabled);
   opts.forEach(o => {
+    const isCurrent = change && o.id === po.payment;
     const label = document.createElement("label");
     label.className = "pay-opt" + (o.disabled ? " disabled" : "");
     const input = document.createElement("input");
     input.type = "radio"; input.name = "payMethod"; input.value = o.id; input.disabled = !!o.disabled;
-    input.addEventListener("change", () => { chosenPayment = o.id; $("payConfirm").disabled = false; });
+    input.addEventListener("change", () => { chosenPayment = o.id; $("payConfirm").disabled = isCurrent; });   // choosing the current method changes nothing
     const text = document.createElement("div");
-    const strong = document.createElement("strong"); strong.textContent = o.label;
+    const strong = document.createElement("strong"); strong.textContent = o.label + (isCurrent ? " (current)" : "");
     const hint = document.createElement("span"); hint.className = "hint"; hint.textContent = o.hint;
     text.appendChild(strong); text.appendChild(hint);
     label.appendChild(input); label.appendChild(text);
     box.appendChild(label);
-    if (enabled.length === 1 && enabled[0] === o) { input.checked = true; chosenPayment = o.id; $("payConfirm").disabled = false; }   // only one choice: pre-select it
+    if (isCurrent) input.checked = true;
+    else if (!change && enabled.length === 1 && enabled[0] === o) { input.checked = true; chosenPayment = o.id; $("payConfirm").disabled = false; }   // only one choice: pre-select it
   });
-  if (!enabled.length) {
+  if (change) {
+    $("payNotice").textContent = enabled.some(o => o.id !== po.payment)
+      ? "Your order is already placed. Choose another way to pay and tap Change payment method."
+      : "There is no other payment method available for this order.";
+    $("payNotice").hidden = false;
+  } else if (!enabled.length) {
     $("payNotice").textContent = "No payment method is available for this order right now. Please message the shop on WhatsApp.";
     $("payNotice").hidden = false;
   }
+  if (push) pushView("pay");
   showPanelView("pay");
 }
 
@@ -965,7 +1010,7 @@ function startCheckout() {
   const bad = validate(true);
   if (bad) { $(bad).focus(); return; }
   if (!paymentsOn()) { submitOrder(null); return; }   // database not updated for payments yet: save without the payment step
-  showPayStep();
+  showPayStep("new", true);
 }
 
 // A phone can open a upi:// link; a computer cannot, so it gets the QR code instead
@@ -1040,12 +1085,13 @@ function upiLink(id, amount, ref) {
   return start + "&am=" + Number(amount).toFixed(2) + "&cu=INR&tn=" + encodeURIComponent("Order " + ref);   // business UPI ID: amount and order number filled in
 }
 
-function showConfirmation(body, payment) {
-  const d = readDetails();
-  const totals = { subtotal: body.subtotal, delivery: body.delivery_charge, total: body.total };
-  $("waConfirm").href = orderLink(totals, body.order_ref, payment);
-  $("confirmRef").textContent = body.order_ref;
-  $("confirmSummary").textContent = d.type + " · Total " + rupees(body.total);
+// Draw the confirmation for a placed order (also used when the customer comes back to it with the Back button)
+function fillConfirmation(po) {
+  const payment = po.payment, body = { order_ref: po.ref, total: po.total };
+  const totals = { subtotal: po.subtotal, delivery: po.delivery, total: po.total };
+  $("waConfirm").href = orderLink(totals, po.ref, payment, po.snap);
+  $("confirmRef").textContent = po.ref;
+  $("confirmSummary").textContent = po.type + " · Total " + rupees(po.total);
   const pay = $("confirmPay"), box = $("upiBox");
   pay.hidden = true; box.hidden = true;
   $("waConfirm").textContent = "Send on WhatsApp";
@@ -1058,8 +1104,11 @@ function showConfirmation(body, payment) {
     const link = upiLink(S.upiId, body.total, body.order_ref);
     $("upiPay").href = link;
     $("upiPay").textContent = fill ? "Pay " + rupees(body.total) + " with UPI" : "Open UPI app to pay";
-    $("upiPay").hidden = !IS_PHONE;            // a computer cannot open the link: it gets the QR code instead
-    $("upiPhoneHelp").hidden = !IS_PHONE;
+    // The "open my UPI app" button only goes to phones, and only for business UPI IDs. For a personal UPI ID some UPI apps
+    // restrict or fail payments that start from a web link, so those customers get the QR code and the details to type instead.
+    const showButton = IS_PHONE && fill;
+    $("upiPay").hidden = !showButton;
+    $("upiPhoneHelp").hidden = !showButton;
     const haveQR = renderQR(link);
     $("qrToggle").hidden = !haveQR;
     $("qrWrap").hidden = !(haveQR && !IS_PHONE);   // computer: QR shown straight away. Phone: tap Show QR code
@@ -1073,7 +1122,7 @@ function showConfirmation(body, payment) {
     $("upiIdText").textContent = S.upiId;
     $("upiAmount").textContent = rupees(body.total);
     $("upiNote").textContent = "Order " + body.order_ref;
-    reportToken = pendingToken;
+    reportToken = po.token;
     $("paidBtn").disabled = false;
     $("paidBtn").textContent = "I've paid";
     $("paidNote").hidden = true;
@@ -1090,7 +1139,16 @@ function showConfirmation(body, payment) {
     pay.textContent = "Payment: pay " + rupees(body.total) + " when you pick up your order.";
     pay.hidden = false;
   }
+}
+
+function showConfirmation(body, payment) {
+  const d = readDetails();
+  const lines = Object.keys(cart).map(id => { const item = MENU_BY_ID[id], q = cart[id]; return `• ${q} × ${item.name} — ${rupees(q * item.price)}`; });
+  placedOrder = { ref: body.order_ref, token: pendingToken, type: d.type, subtotal: body.subtotal, delivery: body.delivery_charge, total: body.total, payment: payment, snap: { d, lines } };
+  fillConfirmation(placedOrder);
+  pushView("confirm");
   showPanelView("confirm");
+  $("confirmTitle").focus({ preventScroll: true });   // not the WhatsApp button at the bottom: that scrolled the screen down
 }
 
 async function submitOrder(payment) {
@@ -1135,7 +1193,6 @@ async function submitOrder(payment) {
     orderMsg = "";
     chosenPayment = null;
     onCartChange();
-    $("waConfirm").focus();
   } catch (e) {
     await handleOrderError(e);
   } finally {
@@ -1148,8 +1205,57 @@ async function submitOrder(payment) {
     updateCheckout();
   }
 }
-$("payConfirm").addEventListener("click", () => { if (chosenPayment) submitOrder(chosenPayment); });
-$("payBack").addEventListener("click", () => showPanelView("cart"));
+async function submitPaymentChange(method) {
+  const po = placedOrder;
+  if (!po || !method || placing) return;
+  if (method === po.payment) { fillConfirmation(po); pushView("confirm"); showPanelView("confirm"); return; }
+  placing = true;
+  $("payConfirm").textContent = "Changing…";
+  $("payConfirm").disabled = true;
+  $("payBack").disabled = true;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/rpc/change_payment", {
+      method: "POST",
+      headers: { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_token: po.token, p_method: method }),
+      signal: ctrl.signal
+    });
+    let body = null;
+    try { body = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || !body || !body.payment_method) throw { status: res.status, body: res.ok ? null : body };
+    po.payment = body.payment_method;     // the same order, now with the new method
+    chosenPayment = null;
+    fillConfirmation(po);
+    pushView("confirm");
+    showPanelView("confirm");
+    $("confirmTitle").focus({ preventScroll: true });
+  } catch (e) {
+    const code = e && e.body && e.body.message;
+    let msg;
+    if (code === "INVALID_PAYMENT" || code === "COD_LIMIT") { await fetchOrdersOpen(); showPayStep("change", false); msg = ORDER_ERRORS[code]; }
+    else if (code && ORDER_ERRORS[code]) msg = ORDER_ERRORS[code];
+    else { console.error("Could not change the payment method:", e); msg = "We couldn't change the payment method. Please try again, or message the shop on WhatsApp."; }
+    $("payNotice").textContent = msg;
+    $("payNotice").hidden = false;
+  } finally {
+    clearTimeout(timer);
+    placing = false;
+    $("payConfirm").textContent = "Change payment method";
+    $("payConfirm").disabled = !chosenPayment || (placedOrder && chosenPayment === placedOrder.payment);
+    $("payBack").disabled = false;
+  }
+}
+$("payConfirm").addEventListener("click", () => {
+  if (!chosenPayment) return;
+  if (payMode === "change") submitPaymentChange(chosenPayment); else submitOrder(chosenPayment);
+});
+$("payBack").addEventListener("click", () => {
+  if (payMode === "change" && placedOrder) { fillConfirmation(placedOrder); pushView("confirm"); showPanelView("confirm"); }
+  else leavePayStep();
+});
+$("changePay").addEventListener("click", () => { if (placedOrder) showPayStep("change", true); });
 ["copyUpi", "copyAmount", "copyNote"].forEach(id => {
   $(id).addEventListener("click", async () => {
     const btn = $(id), value = btn.dataset.copy || "";

@@ -326,3 +326,65 @@ $$;
 
 revoke all on function report_payment(text) from public;
 grant execute on function report_payment(text) to anon, authenticated;
+
+
+-- 6. change_payment(): the customer goes back to the payment screen after placing an order and picks another way to pay.
+--    It changes the SAME order (no second order). It is only allowed while the shop has not yet confirmed the
+--    order and nothing has been paid or reported, and it checks the same rules as place_order.
+create or replace function change_payment(p_token text, p_method text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v orders%rowtype;
+  s shop_settings%rowtype;
+begin
+  if p_token is null or p_token !~ '^[A-Za-z0-9-]{16,64}$' then
+    raise exception 'INVALID_ORDER';
+  end if;
+  if p_method is null or p_method not in ('UPI', 'COD', 'PAY_AT_PICKUP') then
+    raise exception 'INVALID_PAYMENT';
+  end if;
+
+  select * into v from orders where client_token = p_token;
+  if not found then raise exception 'ORDER_NOT_FOUND'; end if;
+
+  -- choosing the method the order already has changes nothing
+  if v.payment_method = p_method then
+    return jsonb_build_object(
+      'order_ref', v.order_ref, 'subtotal', v.subtotal, 'delivery_charge', v.delivery_charge, 'total', v.total,
+      'payment_method', v.payment_method, 'payment_status', v.payment_status);
+  end if;
+
+  -- too late once the shop has confirmed it, it is paid, or the customer has reported a payment
+  if v.status <> 'new' or v.payment_status <> 'unpaid' or v.payment_claimed_at is not null then
+    raise exception 'ORDER_LOCKED';
+  end if;
+
+  select * into s from shop_settings limit 1;
+  if not found then raise exception 'INVALID_PAYMENT'; end if;
+
+  if p_method = 'UPI' and (not s.accept_upi or s.upi_id is null) then
+    raise exception 'INVALID_PAYMENT';
+  end if;
+  if p_method = 'COD' then
+    if v.order_type <> 'Delivery' or not s.accept_cod then raise exception 'INVALID_PAYMENT'; end if;
+    if s.cod_max_total > 0 and v.total > s.cod_max_total then raise exception 'COD_LIMIT'; end if;
+  end if;
+  if p_method = 'PAY_AT_PICKUP' and (v.order_type <> 'Pickup' or not s.accept_pay_at_pickup) then
+    raise exception 'INVALID_PAYMENT';
+  end if;
+
+  update orders set payment_method = p_method where id = v.id;
+
+  return jsonb_build_object(
+    'order_ref', v.order_ref, 'subtotal', v.subtotal, 'delivery_charge', v.delivery_charge, 'total', v.total,
+    'payment_method', p_method, 'payment_status', v.payment_status);
+end;
+$$;
+
+revoke all on function change_payment(text, text) from public;
+grant execute on function change_payment(text, text) to anon, authenticated;
+

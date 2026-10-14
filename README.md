@@ -85,7 +85,7 @@ Setup:
 After the customer taps **Place order** the page shows a payment choice, and the order is saved only when they confirm it:
 - **Delivery orders:** UPI or Cash on delivery.
 - **Pickup orders:** UPI or Pay at pickup.
-- **UPI:** the confirmation offers three ways to pay. On a phone, a button opens the customer's UPI app with the shop's UPI ID filled in. With a **business** UPI ID and the `upi_prefill` setting on, the exact total and the order number are filled in too. With a **personal** UPI ID (the default), the link and QR carry only the UPI ID and shop name, and the customer types the amount shown on screen. A **QR code** (shown straight away on a computer, behind a **Show QR code** button on a phone) can be scanned by any UPI app, or screenshotted and used with Scan from gallery. And the UPI ID, amount and note are shown with Copy buttons for paying by hand. The customer then sends the order on WhatsApp with the payment screenshot. A computer cannot open UPI links, so the button only appears on phones.
+- **UPI:** the confirmation offers three ways to pay. With a **business** UPI ID and the `upi_prefill` setting on (shown as **This is a business UPI ID** in the admin Settings), phones get a **Pay with UPI** button that opens the customer's UPI app with the UPI ID, exact total and order number filled in. With a **personal** UPI ID (the default), there is no such button, because UPI apps often restrict or fail payments that start from a web link (PhonePe shows a screenshot-payment limit notice, Amazon Pay a "technical error"). Those customers get the QR code and the UPI ID, amount and note to type, which work in every UPI app. A **QR code** (shown straight away on a computer, behind a **Show QR code** button on a phone) can be scanned by any UPI app, or screenshotted and used with Scan from gallery. And the UPI ID, amount and note are shown with Copy buttons for paying by hand. The customer then sends the order on WhatsApp with the payment screenshot. A computer cannot open UPI links, so the button only appears on phones.
 - **The page cannot see whether a UPI payment went through.** Orders start as `unpaid`. After paying, the customer taps **I've paid** on the confirmation. That flags the order as **Payment reported** in the admin, with an alert like the new-order one, but it is only the customer's word. The owner checks their UPI app, matches the order number in the payment note, and taps **Mark paid**. Treat UPI orders as unconfirmed until then. Fully automatic payment confirmation needs a payment gateway.
 
 These live in the `shop_settings` table (one row). The owner changes them in the admin page's **Settings** tab; you can also edit them in Table Editor:
@@ -94,10 +94,12 @@ These live in the `shop_settings` table (one row). The owner changes them in the
 | --- | --- |
 | `upi_id` | The shop's UPI ID, like `shopname@okaxis`. UPI is not offered until this is set |
 | `accept_upi`, `accept_cod`, `accept_pay_at_pickup` | Switch each payment method on or off |
-| `upi_prefill` | Off (default): the UPI link and QR carry only the UPI ID, and the customer types the amount. On: the amount and order number are filled in. Turn it on only for a business UPI ID |
+| `upi_prefill` | Off (default, personal UPI ID): the QR carries only the UPI ID and the customer types the amount; there is no Pay with UPI button. On (business UPI ID): the amount and order number are filled in and phones get the Pay with UPI button |
 | `cod_max_total` | Largest order total allowed for cash on delivery. `0` = no limit. Default 1500 |
 | `free_delivery_above` | Items total at or above this get free delivery. `0` = never free. Default 1000 |
 | `min_order`, `delivery_charge` | As before |
+
+**Back button and changing how to pay.** The phone's Back button steps back one screen at a time: confirmation, then payment choice, then cart, then closed. Pressing Back on the confirmation shows the payment screen as **Change how you pay**. It changes the same order, not a new one (`change_payment` in `supabase-orders.sql`), and only while the shop has not yet confirmed it and nothing has been paid or reported. The confirmation also has a **Change payment method** button. Once the shop confirms the order, the customer is asked to message the shop instead.
 
 The database checks all of this again when an order is placed, so the page can't be tricked into a method or price that isn't allowed. Orders store `payment_method` (`UPI`, `COD` or `PAY_AT_PICKUP`), `payment_status` (`unpaid`, `paid` or `refunded`) and `paid_at`. Orders from before payments existed have no payment method.
 
@@ -106,9 +108,9 @@ To upgrade a shop that already has the Week 3 or an earlier Week 4 database, run
 **Personal UPI IDs and pre-filled payments.** UPI's payment link format is designed for registered merchants. When the receiving account is a personal one, banks and UPI apps can decline payments that arrive with a pre-filled amount, with errors like "technical error", "risk threshold exceeded" or a security message. That is why `upi_prefill` is off by default. For a shop that takes real UPI payments, the dependable setup is a **business UPI ID** (from PhonePe, Paytm or Google Pay for Business, or a bank merchant account), with `upi_prefill` switched on. A payment gateway (for example Razorpay) is the next step up and confirms payments automatically.
 
 If a UPI payment fails inside the customer's UPI app (for example Amazon Pay says "technical error"), the link itself has done its job. Check these:
+- **Screenshot payments have limits.** Some UPI apps stop a payment made from a screenshot (Scan from gallery) at a set amount, for example ₹2,000. On phones the confirmation shows a note about this when the total is above ₹2,000. The QR scanned live from another phone or screen, and paying to the UPI ID by hand, are not limited this way.
 - **Pay ₹1 by hand first.** From someone else's phone, open any UPI app, choose pay to a UPI ID, type the shop's ID and an amount yourself. If even that fails, the UPI ID or its bank cannot receive reliably, and no link or QR will fix it: use another UPI ID.
 - **Test from a different person's account.** UPI refuses a payment from an account to itself, and it often shows a vague error. Never test with the shop's own number and app.
-- **Pay ₹1 by hand first.** In any UPI app, pay ₹1 to the shop's UPI ID from someone else's phone before going live.
 - **Try another UPI app** (GPay, PhonePe, Paytm) and the QR code. Banks and apps sometimes have temporary problems or limits.
 - **Customers see the account holder's name** in their UPI app. If it differs from the shop's name, some will hesitate. A business UPI ID or QR where the name matches the shop is more trusted.
 
