@@ -11,53 +11,137 @@
 <title>Namma Fresh Bakes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Hind:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
 <style>
   :root {
-    --oxide: #8f2d1f;      /* red-oxide */
-    --gold: #d9a01e;       /* turmeric gold */
-    --ivory: #fbf6ea;      /* rice-flour ivory */
-    --ink: #2b1a14;
-    --muted: #6d5a50;
-    --line: #e6d9bd;
+    --oxide: #3b2317;      /* brand: deep chocolate (buttons, dark sections) */
+    --gold: #d9962b;       /* accent: amber (small labels, focus rings) */
+    --ivory: #fbf3e6;      /* page background: warm cream */
+    --caramel: #a85f27;    /* "Add to basket" buttons and the italic words in the headline */
+    --card: #fffaf2;
+    --cream2: #f3e4cb;
+    --ink: #2a1a12;
+    --muted: #7a6657;
+    --line: #eadcc6;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }   /* without this, rules like .btn { display: ... } would keep hidden buttons visible */
-  body { margin: 0; background: var(--ivory); color: var(--ink); font-family: "Hind", system-ui, sans-serif; line-height: 1.55; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ivory); color: var(--ink); font-family: "Inter", system-ui, sans-serif; line-height: 1.55; }
   body.lock { overflow: hidden; }
-  h1, h2, h3 { font-family: "Young Serif", Georgia, serif; font-weight: 400; margin: 0; }
-  header { background: var(--oxide); color: var(--ivory); padding: 40px 20px 36px; text-align: center; }
-  header h1 { font-size: clamp(2rem, 7vw, 3.2rem); }
-  header p { margin: 8px auto 0; max-width: 34ch; color: #f1dcc0; }
-  .kolam { height: 14px; background: radial-gradient(circle, var(--gold) 3px, transparent 3.5px) 0 0 / 22px 14px repeat-x; }
-  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
-  .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
-  .filters button { flex: none; border: 1.5px solid var(--oxide); background: transparent; color: var(--oxide); padding: 8px 16px; border-radius: 999px; font: 500 0.95rem "Hind", sans-serif; cursor: pointer; }
-  .filters button.active { background: var(--oxide); color: var(--ivory); }
-  .category { margin-top: 28px; }
-  .category h2 { font-size: 1.5rem; color: var(--oxide); padding-bottom: 6px; border-bottom: 2px dotted var(--gold); }
-  .item { display: flex; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
-  .item h3 { font-size: 1.1rem; }
-  .item p { margin: 4px 0 0; color: var(--muted); font-size: 0.95rem; }
-  .price { font-weight: 600; white-space: nowrap; }
-  .ctl { margin-top: 10px; min-height: 40px; }
-  .btn { display: inline-block; background: var(--oxide); color: var(--ivory); border: 0; padding: 10px 20px; border-radius: 8px; font: 600 0.95rem "Hind", sans-serif; text-decoration: none; cursor: pointer; }
-  .btn:focus-visible, .filters button:focus-visible, .stepper button:focus-visible,
+  h1, h2, h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  [id] { scroll-margin-top: 84px; }
+
+  /* Header */
+  .site-header { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--line); background: rgba(251, 243, 230, 0.93); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; color: inherit; text-decoration: none; }
+  .logo { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--oxide); color: var(--gold); font: italic 600 1.2rem "Fraunces", Georgia, serif; }
+  .brand-text { min-width: 0; }
+  .brand-text strong { display: block; overflow: hidden; font: 600 1.1rem/1.15 "Fraunces", Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-text small { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 0.66rem; letter-spacing: 0.14em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+  .nav { display: flex; align-items: center; gap: 18px; }
+  .nav a { color: var(--ink); font-size: 0.95rem; text-decoration: none; }
+  .basket-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 0; border-radius: 999px; background: var(--oxide); color: #fff; font: 600 0.9rem "Inter", system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+  .basket-btn .count { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: var(--ink); font-size: 0.75rem; }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; padding-top: 36px; padding-bottom: 24px; }
+  .pill { display: inline-block; margin: 0 0 16px; padding: 6px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted); font-size: 0.8rem; }
+  .display { font-size: clamp(2.5rem, 7vw, 4.3rem); font-weight: 700; line-height: 1.02; }
+  .display em { display: block; color: var(--caramel); font-style: italic; font-weight: 600; }
+  .lead { max-width: 46ch; margin: 18px 0 0; color: var(--muted); font-size: 1.05rem; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .btn-dark, .btn-outline { display: inline-block; padding: 13px 22px; border-radius: 999px; font: 600 0.95rem "Inter", system-ui, sans-serif; text-decoration: none; cursor: pointer; touch-action: manipulation; }
+  .btn-dark { border: 1.5px solid var(--oxide); background: var(--oxide); color: #fff; }
+  .btn-outline { border: 1.5px solid var(--line); background: transparent; color: var(--ink); }
+  .hero-art { position: relative; margin-bottom: 18px; }
+  .frame { padding: 14px; border-radius: 30px; background: var(--cream2); transform: rotate(1.5deg); }
+  .art-box { position: relative; overflow: hidden; border-radius: 22px; background: var(--cream2); aspect-ratio: 4 / 3; }
+  .art-box > svg, .art-box > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+  .float-card { position: absolute; left: -6px; bottom: -20px; max-width: 80%; padding: 12px 16px; border-radius: 14px; background: var(--card); box-shadow: 0 10px 30px rgba(59, 35, 23, 0.16); }
+  .float-card strong { display: block; font: 600 1.05rem "Fraunces", Georgia, serif; }
+  .float-card span { color: var(--muted); font-size: 0.85rem; }
+
+  /* Three steps */
+  .steps { display: grid; gap: 20px; padding-top: 30px; padding-bottom: 30px; }
+  .step { display: flex; align-items: flex-start; gap: 14px; }
+  .step-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--cream2); color: var(--caramel); }
+  .step small { display: block; color: var(--muted); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; }
+  .step h3 { margin: 2px 0; font-size: 1.05rem; }
+  .step p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+  /* Menu */
+  .menu-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 26px 0 22px; }
+  .eyebrow { margin: 0; color: var(--gold); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; }
+  .menu-head h2 { font-size: clamp(1.9rem, 4.5vw, 2.7rem); }
+  .filters { display: flex; gap: 8px; max-width: 100%; padding-bottom: 4px; overflow-x: auto; }
+  .filters button { flex: none; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: 500 0.9rem "Inter", system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+  .filters button.active { border-color: var(--oxide); background: var(--oxide); color: #fff; }
+  .category { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; margin: 0; }
+  .item { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--card); }
+  .card-img { position: relative; aspect-ratio: 4 / 3; background: var(--cream2); }
+  .card-img > svg, .card-img > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+  .badge-tag { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 999px; background: #fff; color: #8a2b2b; font-size: 0.75rem; font-weight: 600; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14); }
+  .card-body { display: flex; flex: 1; flex-direction: column; gap: 2px; padding: 18px 20px 20px; }
+  .card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .item h3 { font-size: 1.25rem; overflow-wrap: anywhere; }
+  .price { font: 600 1.05rem "Fraunces", Georgia, serif; white-space: nowrap; }
+  .unit { margin: 0; color: var(--muted); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .desc { flex: 1; margin: 8px 0 0; color: var(--muted); font-size: 0.92rem; }
+  .ctl { margin-top: 14px; min-height: 40px; }
+
+  .btn { display: inline-block; background: var(--oxide); color: var(--ivory); border: 0; padding: 10px 20px; border-radius: 10px; font: 600 0.95rem "Inter", system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+  .item .btn { padding: 9px 18px; border-radius: 999px; background: var(--caramel); color: #fff; font-size: 0.9rem; }
+  .btn:focus-visible, .filters button:focus-visible, .stepper button:focus-visible, .basket-btn:focus-visible, .btn-dark:focus-visible, .btn-outline:focus-visible,
   .remove:focus-visible, .bar button:focus-visible, .close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-  .sold { opacity: 0.55; }
+  .sold .card-img { filter: grayscale(0.85); opacity: 0.7; }
   .sold .btn { background: #b9aaa0; pointer-events: none; }
-  footer { text-align: center; padding: 28px 16px 48px; color: var(--muted); font-size: 0.9rem; }
+
+  /* Pick-up section */
+  .visit { display: grid; grid-template-columns: 1fr; margin: 56px auto 0; overflow: hidden; border-radius: 28px; background: var(--oxide); color: #f6ead9; }
+  .visit-copy { padding: 34px 30px; }
+  .visit h2 { margin-top: 6px; color: #fff; font-size: clamp(1.8rem, 4.5vw, 2.5rem); }
+  .visit p { max-width: 40ch; margin: 14px 0 0; color: #e3d0b6; }
+  .visit ul { display: grid; gap: 12px; margin: 22px 0 0; padding: 0; list-style: none; }
+  .visit li { display: flex; align-items: center; gap: 12px; }
+  .visit li svg { flex: none; color: var(--gold); }
+  .visit-art { position: relative; min-height: 230px; background: var(--cream2); }
+  .visit-art > svg, .visit-art > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  /* Footer */
+  .site-footer { margin-top: 48px; background: var(--oxide); color: #dcc7a9; }
+  .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; padding-top: 26px; padding-bottom: 96px; }
+  .foot strong { color: #fff; font: 600 1.1rem "Fraunces", Georgia, serif; }
+  .foot a { color: #cdb89b; font-size: 0.85rem; text-decoration: none; }
+  .foot-note { font-size: 0.9rem; }
+
+  @media (min-width: 760px) {
+    .steps { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (min-width: 900px) {
+    .hero { grid-template-columns: 1.05fr 1fr; gap: 56px; padding-top: 56px; }
+    .visit { grid-template-columns: 1fr 1fr; }
+    .visit-copy { padding: 46px 44px; }
+    .bar { display: none; }              /* on a computer the Basket button in the header is used */
+    .foot { padding-bottom: 26px; }
+  }
+  @media (max-width: 420px) {
+    .nav { gap: 12px; }
+    .basket-btn span:not(.count) { display: none; }
+  }
 
   /* Quantity stepper: - / qty / + */
   .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--oxide); border-radius: 8px; overflow: hidden; background: var(--ivory); }
-  .stepper button { width: 42px; height: 40px; background: transparent; border: 0; color: var(--oxide); font: 600 1.3rem "Hind", sans-serif; cursor: pointer; }
+  .stepper button { width: 42px; height: 40px; background: transparent; border: 0; color: var(--oxide); font: 600 1.3rem "Inter", system-ui, sans-serif; cursor: pointer; }
   .stepper button:disabled { opacity: 0.35; cursor: default; }
   .stepper .qty { min-width: 34px; text-align: center; font-weight: 600; }
 
   /* Sticky cart bar */
   .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
-  .bar button { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 736px; margin: 0 auto; padding: 14px 18px; border: 0; border-radius: 14px; background: var(--oxide); color: var(--ivory); font: 600 1rem "Hind", sans-serif; box-shadow: 0 6px 18px rgba(43, 26, 20, 0.35); cursor: pointer; }
+  .bar button { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 736px; margin: 0 auto; padding: 14px 18px; border: 0; border-radius: 14px; background: var(--oxide); color: var(--ivory); font: 600 1rem "Inter", system-ui, sans-serif; box-shadow: 0 6px 18px rgba(43, 26, 20, 0.35); cursor: pointer; }
   .bar .go { color: #f1dcc0; font-weight: 500; }
 
   /* Cart panel (bottom sheet) */
@@ -76,7 +160,7 @@
   .field { margin-bottom: 18px; }
   .field label { display: block; margin-bottom: 4px; font-size: 0.9rem; font-weight: 600; }
   .field .opt { font-weight: 400; color: var(--muted); }
-  .field input, .field textarea, .field select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Hind", sans-serif; }
+  .field input, .field textarea, .field select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 400 1rem "Inter", system-ui, sans-serif; }
   .field textarea { resize: vertical; }
   .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible { border-color: var(--oxide); outline: 3px solid var(--gold); outline-offset: 1px; }
   .field [aria-invalid="true"] { border-color: #b3261e; }
@@ -94,7 +178,7 @@
   .line-info { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
   .line-info strong { font-weight: 600; }
   .unit { color: var(--muted); font-size: 0.9rem; }
-  .remove { margin-top: 4px; padding: 4px 0; border: 0; background: none; color: var(--oxide); font: 500 0.9rem "Hind", sans-serif; text-decoration: underline; cursor: pointer; }
+  .remove { margin-top: 4px; padding: 4px 0; border: 0; background: none; color: var(--oxide); font: 500 0.9rem "Inter", system-ui, sans-serif; text-decoration: underline; cursor: pointer; }
   .line-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .line-total { font-weight: 600; white-space: nowrap; }
   .empty { padding: 28px 0; text-align: center; color: var(--muted); }
@@ -118,7 +202,7 @@
   .confirm p { margin: 8px 0; }
   .confirm .checkout { margin-top: 10px; }
   .confirm-tick { width: 48px; height: 48px; margin: 0 auto 8px !important; border-radius: 50%; background: #2f7a3d; color: #fff; font-size: 1.6rem; line-height: 48px; }
-  .ref { font: 400 2.1rem "Young Serif", Georgia, serif; letter-spacing: 0.08em; color: var(--oxide); }
+  .ref { font: 400 2.1rem "Fraunces", Georgia, serif; letter-spacing: 0.08em; color: var(--oxide); }
   .paused-note { margin: 0 0 16px; padding: 12px 14px; border-left: 4px solid var(--oxide); border-radius: 6px; background: #f8e6c2; font-weight: 600; }
   .free-hint { margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; color: #2f7a3d; }
   .btn.sm { padding: 6px 12px; font-size: 0.85rem; }
@@ -161,7 +245,7 @@
   .item > div:first-child, .line-info { min-width: 0; }
   .item h3, .line-info strong { overflow-wrap: anywhere; }
   .line-side { flex: none; }
-  .toast-btn { margin-left: 10px; padding: 4px 12px; border: 1px solid var(--ivory); border-radius: 6px; background: transparent; color: var(--ivory); font: 600 0.9rem "Hind", sans-serif; cursor: pointer; }
+  .toast-btn { margin-left: 10px; padding: 4px 12px; border: 1px solid var(--ivory); border-radius: 6px; background: transparent; color: var(--ivory); font: 600 0.9rem "Inter", system-ui, sans-serif; cursor: pointer; }
   @media (max-width: 360px) {
     .bar .go { display: none; }
     .stepper button { width: 38px; }
@@ -194,16 +278,49 @@ const CONFIG = {
   deliveryCharge: 50,         // added to Delivery orders, in rupees (0 = free). With Supabase, shop_settings is used instead
   cutoffMessage: "Order before 6 pm for next-day delivery.",   // shown in the cart panel; "" hides it
   colors: {                   // brand colours (keep the background light)
-    main: "#8f2d1f",          // header, buttons, headings
-    accent: "#d9a01e",        // dotted dividers and focus rings
-    background: "#fbf6ea"     // page background
+    main: "#3b2317",          // dark brand colour: buttons, dark sections, footer
+    accent: "#d9962b",        // small labels and focus rings
+    background: "#fbf3e6",    // page background (keep it light)
+    caramel: "#a85f27"        // "Add to basket" buttons and the italic headline words
   },
   supabaseUrl: "https://bumddoxdrdddxbwjqlhk.supabase.co",   // Project URL from Supabase. Use "" to show only the built-in MENU below
   supabaseKey: "sb_publishable_zzQ84uzQhG9KlefS3G1d8w_rC6Y7hei",  // PUBLISHABLE key only. Never paste the secret key here
   saveOrders: true,           // true = save each order in Supabase for the owner's dashboard. false = WhatsApp only, nothing saved
   privacyNote: "",              // optional sentence shown before the link ("" = just the link)
   privacyUrl: "privacy.html",   // page with the full privacy details ("" = no link)
-  pausedMessage: "We're not taking online orders right now. You can still look at the menu. Please check back soon."   // shown when the owner switches "Accepting online orders" off
+  pausedMessage: "We're not taking online orders right now. You can still look at the menu. Please check back soon.",   // shown when the owner switches "Accepting online orders" off
+  /* ---------- storefront text: edit these for each client ---------- */
+  logoLetter: "N",                       // the letter in the round logo ("" = first letter of shopName)
+  navMenu: "Menu", navVisit: "Visit", navBasket: "Basket",
+  hero: {
+    pill: "Small-batch · Home kitchen · Bengaluru",     // "" hides it
+    line1: "Baked fresh at home,",
+    line2: "ready when you are.",                       // shown in italic
+    text: "Custom cakes, eggless celebration bakes, slow-ferment sourdough and millet treats, baked in small batches in our Bengaluru home kitchen. Order online, then pick up or get it delivered, and pay by UPI or cash.",
+    cta1: "Browse the menu", cta2: "My basket",
+    image: "",                                          // photo link ("" = a drawn placeholder)
+    cardTitle: "Pickup or free delivery",
+    cardSub: "Free delivery on orders over {free}",     // {free} = the free delivery amount from Settings
+    cardSubNoFree: "Delivery across Bengaluru"          // used when there is no free delivery amount
+  },
+  steps: [                                              // icon: basket, clock or wallet
+    { icon: "basket", title: "Fill your basket", text: "Pick your favourites from the menu." },
+    { icon: "clock", title: "Pick up or get it delivered", text: "{ahead} {freeLine}" },
+    { icon: "wallet", title: "Pay your way", text: "Scan our UPI QR, or pay cash when you collect or it arrives." }
+  ],
+  menuEyebrow: "The kitchen", menuTitle: "Our menu",
+  visit: {
+    eyebrow: "Come say hello", title: "Pick up from our kitchen",
+    text: "Your order is packed and labelled with your name. Give us your order number, pay by cash or UPI, and you're on your way.",
+    lines: [                                            // icon: clock, pin or oven
+      { icon: "clock", text: "Pickups 9 am to 8 pm, every day" },
+      { icon: "pin", text: "Bengaluru (we share the address when you order)" },
+      { icon: "oven", text: "Custom cakes need a day's notice" }
+    ],
+    image: ""
+  },
+  footerTagline: "Order online · Pick up or free delivery · Baked fresh to order",
+  staffLabel: "Staff"                                  // the link to the owner's admin page ("" hides it)
 };
 
 /* =====================================================
@@ -216,34 +333,84 @@ const CONFIG = {
    - available: false shows the item as "Sold out"
    ===================================================== */
 const MENU = [
-  { id: 1,  name: "Custom Photo-Theme Cake (1 kg)", category: "Custom cakes", price: 1800, description: "Fondant or buttercream finish. Share your theme and message when you order.", available: true },
-  { id: 2,  name: "Black Forest Celebration Cake (1 kg)", category: "Custom cakes", price: 950, description: "Chocolate sponge, whipped cream, cherries.", available: true },
-  { id: 3,  name: "Eggless Chocolate Truffle Cake (1 kg)", category: "Eggless cakes", price: 1100, description: "Dense, rich, and fully eggless.", available: true },
-  { id: 4,  name: "Eggless Mango Cream Cake (1 kg)", category: "Eggless cakes", price: 1200, description: "Seasonal Alphonso mango. Sold out when mangoes are out of season.", available: false },
-  { id: 5,  name: "Sourdough Loaf (500 g)", category: "Sourdough and artisan breads", price: 220, description: "72-hour ferment, crackly crust. Baked fresh on weekends.", available: true },
-  { id: 6,  name: "Multigrain Seed Loaf (400 g)", category: "Sourdough and artisan breads", price: 180, description: "Sunflower, flax and pumpkin seeds.", available: true },
-  { id: 7,  name: "Butter Cookies (box of 12)", category: "Cookies", price: 260, description: "Classic, crisp, and not too sweet.", available: true },
-  { id: 8,  name: "Choco-Chip Cookies (box of 6)", category: "Cookies", price: 240, description: "Soft centre, brown-sugar edges.", available: true },
-  { id: 9,  name: "Ragi Chocolate Brownies (box of 6)", category: "Millet-based bakes", price: 320, description: "Finger millet flour, jaggery-sweetened.", available: true },
-  { id: 10, name: "Jowar Banana Muffins (box of 4)", category: "Millet-based bakes", price: 200, description: "Sorghum flour, ripe banana, a little cinnamon.", available: true }
+  { id: 1,  name: "Custom Photo-Theme Cake (1 kg)", category: "Custom cakes", price: 1800, description: "Fondant or buttercream finish. Share your theme and message when you order.", unit: "1 KG", badge: "Celebrations", available: true },
+  { id: 2,  name: "Black Forest Celebration Cake (1 kg)", category: "Custom cakes", price: 950, description: "Chocolate sponge, whipped cream, cherries.", unit: "1 KG", available: true },
+  { id: 3,  name: "Eggless Chocolate Truffle Cake (1 kg)", category: "Eggless cakes", price: 1100, description: "Dense, rich, and fully eggless.", unit: "1 KG", badge: "Eggless", available: true },
+  { id: 4,  name: "Eggless Mango Cream Cake (1 kg)", category: "Eggless cakes", price: 1200, description: "Seasonal Alphonso mango. Sold out when mangoes are out of season.", unit: "1 KG", badge: "Seasonal", available: false },
+  { id: 5,  name: "Sourdough Loaf (500 g)", category: "Sourdough and artisan breads", price: 220, description: "72-hour ferment, crackly crust. Baked fresh on weekends.", unit: "500 G LOAF", badge: "Weekend special", available: true },
+  { id: 6,  name: "Multigrain Seed Loaf (400 g)", category: "Sourdough and artisan breads", price: 180, description: "Sunflower, flax and pumpkin seeds.", unit: "400 G LOAF", available: true },
+  { id: 7,  name: "Butter Cookies (box of 12)", category: "Cookies", price: 260, description: "Classic, crisp, and not too sweet.", unit: "BOX OF 12", badge: "Bestseller", available: true },
+  { id: 8,  name: "Choco-Chip Cookies (box of 6)", category: "Cookies", price: 240, description: "Soft centre, brown-sugar edges.", unit: "BOX OF 6", available: true },
+  { id: 9,  name: "Ragi Chocolate Brownies (box of 6)", category: "Millet-based bakes", price: 320, description: "Finger millet flour, jaggery-sweetened.", unit: "BOX OF 6", badge: "Millet", available: true },
+  { id: 10, name: "Jowar Banana Muffins (box of 4)", category: "Millet-based bakes", price: 200, description: "Sorghum flour, ripe banana, a little cinnamon.", unit: "BOX OF 4", available: true }
 ];
 </script>
 
 
-<header>
-  <h1 id="shopName"></h1>
-  <p id="tagline"></p>
+<header class="site-header">
+  <div class="wrap hdr">
+    <a class="brand" href="#top" aria-label="Back to the top">
+      <span class="logo" id="logoMark" aria-hidden="true"></span>
+      <span class="brand-text"><strong id="shopName"></strong><small id="tagline"></small></span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#menuSection" id="navMenu">Menu</a>
+      <a href="#visit" id="navVisit">Visit</a>
+      <button type="button" class="basket-btn" id="openCartTop"><span id="topIcon" aria-hidden="true"></span><span id="navBasket">Basket</span><span class="count" id="topCount" hidden></span></button>
+    </nav>
+  </div>
 </header>
-<div class="kolam" aria-hidden="true"></div>
 
-<main>
-  <p class="paused-note" id="pausedNote" role="status" hidden></p>
-  <div class="filters" id="filters" role="group" aria-label="Menu categories"></div>
-  <p class="menu-note" id="menuNote" role="status" hidden></p>
-  <div id="menu"></div>
+<main id="top">
+  <section class="wrap hero" aria-labelledby="heroTitle">
+    <div class="hero-copy">
+      <p class="pill" id="heroPill" hidden></p>
+      <h1 class="display" id="heroTitle"><span id="heroLine1"></span> <em id="heroLine2"></em></h1>
+      <p class="lead" id="heroText"></p>
+      <div class="cta">
+        <a class="btn-dark" href="#menuSection" id="heroCta1">Browse the menu</a>
+        <button type="button" class="btn-outline" id="heroCta2">My basket</button>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="frame"><div class="art-box" id="heroArt"></div></div>
+      <div class="float-card"><strong id="heroCardTitle"></strong><span id="heroCardSub"></span></div>
+    </div>
+  </section>
+
+  <section class="wrap steps" id="steps" aria-label="How it works"></section>
+
+  <section class="wrap" id="menuSection" aria-labelledby="menuTitle">
+    <div class="menu-head">
+      <div><p class="eyebrow" id="menuEyebrow"></p><h2 id="menuTitle"></h2></div>
+      <div class="filters" id="filters" role="group" aria-label="Menu categories"></div>
+    </div>
+    <p class="paused-note" id="pausedNote" role="status" hidden></p>
+    <p class="menu-note" id="menuNote" role="status" hidden></p>
+    <div id="menu"></div>
+  </section>
+
+  <section class="wrap" id="visit" aria-labelledby="visitTitle">
+    <div class="visit">
+      <div class="visit-copy">
+        <p class="eyebrow" id="visitEyebrow"></p>
+        <h2 id="visitTitle"></h2>
+        <p id="visitText"></p>
+        <ul id="visitLines"></ul>
+      </div>
+      <div class="visit-art" id="visitArt"></div>
+    </div>
+  </section>
 </main>
 
-<footer id="footer"></footer>
+<footer class="site-footer">
+  <div class="wrap foot">
+    <strong id="footBrand"></strong>
+    <span class="foot-note" id="footTagline"></span>
+    <span class="foot-note" id="footer"></span>
+    <a href="admin.html" id="staffLink">Staff</a>
+  </div>
+</footer>
 
 <!-- Sticky cart bar -->
 <div class="bar" id="bar" hidden>
@@ -461,12 +628,59 @@ function controlHTML(item) {
   return stepperHTML(item);
 }
 
+// ---------- Pictures: a link to a photo, or a drawn placeholder ----------
+function safeImageUrl(u) {   // only https links, or files in this site's images folder
+  u = String(u || "").trim();
+  return /^(https:\/\/|images\/)[^\s"'<>]+$/.test(u) ? u : "";
+}
+const ART_BG = ["#f3e4cb", "#efd9b8", "#f6e9d6", "#ead6bd"];
+function artKind(item) {
+  const t = (item.name + " " + item.category).toLowerCase();
+  if (/brownie/.test(t)) return "brownie";
+  if (/muffin|cupcake/.test(t)) return "muffin";
+  if (/cake|torte|truffle|forest/.test(t)) return "cake";
+  if (/puff|samosa|savour|pastry|patty|roll/.test(t)) return "puff";
+  if (/sourdough|loaf|bread/.test(t)) return "loaf";
+  if (/bun|pav|kulcha/.test(t)) return "bun";
+  if (/cookie|biscuit|rusk|nankhatai|sweet|pak|ladoo/.test(t)) return "biscuit";
+  return "cake";
+}
+const ART_SHAPES = {
+  cake: '<ellipse cx="200" cy="222" rx="96" ry="14" fill="rgba(0,0,0,.16)"/><rect x="128" y="150" width="144" height="60" rx="9" fill="#7b3f25"/><rect x="128" y="138" width="144" height="16" fill="#f7e8d2"/><rect x="128" y="100" width="144" height="42" rx="9" fill="#8d4a2b"/><circle cx="162" cy="96" r="9" fill="#b3202a"/><circle cx="200" cy="91" r="9" fill="#b3202a"/><circle cx="238" cy="96" r="9" fill="#b3202a"/>',
+  puff: '<ellipse cx="200" cy="222" rx="100" ry="12" fill="rgba(0,0,0,.16)"/><path d="M108 212 Q200 62 292 212 Z" fill="#d79a45"/><path d="M130 204 Q200 98 270 204" fill="none" stroke="#b9772c" stroke-width="6" stroke-linecap="round"/><path d="M150 200 L158 178 M180 196 L186 160 M215 196 L212 158 M246 200 L238 176" stroke="#f0c27a" stroke-width="5" stroke-linecap="round"/>',
+  bun: '<ellipse cx="200" cy="224" rx="104" ry="12" fill="rgba(0,0,0,.16)"/><circle cx="158" cy="174" r="52" fill="#cf8f48"/><circle cx="244" cy="178" r="52" fill="#d9a15a"/><ellipse cx="142" cy="156" rx="18" ry="9" fill="#e8bd82"/><ellipse cx="228" cy="160" rx="18" ry="9" fill="#efc78e"/>',
+  loaf: '<ellipse cx="200" cy="224" rx="112" ry="12" fill="rgba(0,0,0,.16)"/><rect x="100" y="128" width="200" height="92" rx="46" fill="#c58a45"/><path d="M140 140 L162 204 M186 136 L208 208 M232 140 L254 204" stroke="#efd09a" stroke-width="9" stroke-linecap="round"/>',
+  biscuit: '<ellipse cx="200" cy="226" rx="104" ry="12" fill="rgba(0,0,0,.16)"/><circle cx="150" cy="190" r="38" fill="#d9a766"/><circle cx="238" cy="196" r="38" fill="#e0b073"/><circle cx="196" cy="146" r="38" fill="#d4a05d"/><g fill="#b98445"><circle cx="140" cy="182" r="4"/><circle cx="160" cy="198" r="4"/><circle cx="230" cy="190" r="4"/><circle cx="250" cy="206" r="4"/><circle cx="188" cy="140" r="4"/><circle cx="206" cy="156" r="4"/></g>',
+  muffin: '<ellipse cx="200" cy="226" rx="86" ry="12" fill="rgba(0,0,0,.16)"/><path d="M140 148 Q200 56 260 148 Z" fill="#8a5a36"/><path d="M146 148 L162 218 H238 L254 148 Z" fill="#e8c27a"/><path d="M176 150 L182 216 M200 150 V216 M224 150 L218 216" stroke="#cda55c" stroke-width="4"/>',
+  brownie: '<ellipse cx="200" cy="226" rx="108" ry="12" fill="rgba(0,0,0,.16)"/><rect x="108" y="150" width="84" height="70" rx="8" fill="#4a2a1c"/><rect x="204" y="156" width="84" height="64" rx="8" fill="#573223"/><rect x="152" y="104" width="84" height="64" rx="8" fill="#4a2a1c"/><g fill="#f4e6d2" opacity=".9"><circle cx="130" cy="166" r="4"/><circle cx="170" cy="124" r="4"/><circle cx="226" cy="176" r="4"/><circle cx="260" cy="190" r="4"/></g>'
+};
+function artSvg(kind, seed) {   // our own fixed drawings, no user text goes into this markup
+  const wrap = document.createElement("div");
+  wrap.innerHTML = '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="' + ART_BG[Math.abs(seed || 0) % ART_BG.length] + '"/><ellipse cx="200" cy="216" rx="156" ry="50" fill="#5f7d3a"/><ellipse cx="200" cy="212" rx="132" ry="40" fill="#b8903f"/>' + (ART_SHAPES[kind] || ART_SHAPES.cake) + '</svg>';
+  return wrap.firstChild;
+}
+function heroSvg() {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#f0dcbc"/><rect x="0" y="228" width="400" height="72" fill="#8a5a36"/><ellipse cx="200" cy="222" rx="176" ry="54" fill="#5f7d3a"/><ellipse cx="200" cy="218" rx="150" ry="44" fill="#b8903f"/><g transform="translate(-52 -14) scale(.62)">' + ART_SHAPES.puff + '</g><g transform="translate(118 -2) scale(.62)">' + ART_SHAPES.bun + '</g><g transform="translate(34 -40) scale(.5)">' + ART_SHAPES.biscuit + '</g></svg>';
+  return wrap.firstChild;
+}
+const ICONS = {
+  basket: '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9h14l-1.2 9.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 9z"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10h17"/><path d="M16 14.5h2"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.5-5.6 6.5-11a6.5 6.5 0 1 0-13 0c0 5.4 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+  oven: '<svg viewBox="0 0 24 24" width="SIZE" height="SIZE" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M4 9.5h16"/><rect x="7.5" y="12" width="9" height="4.5" rx="1"/></svg>'
+};
+const icon = (name, size) => (ICONS[name] || ICONS.basket).replace(/SIZE/g, String(size || 22));
+
+// ---------- Menu ----------
 function renderFilters() {
   const cats = ["All", ...new Set(MENU.map(i => i.category))];
   const box = $("filters");
   box.innerHTML = "";
   cats.forEach(c => {
     const b = document.createElement("button");
+    b.type = "button";
     b.textContent = c;
     if (c === activeCategory) b.classList.add("active");
     b.onclick = () => { activeCategory = c; renderFilters(); renderMenu(); };
@@ -474,28 +688,133 @@ function renderFilters() {
   });
 }
 
+function cardImage(item) {
+  const box = document.createElement("div");
+  box.className = "card-img";
+  const fallback = () => artSvg(artKind(item), item.id);
+  if (item.image) {
+    const img = new Image();
+    img.alt = item.name;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.addEventListener("error", () => { if (img.isConnected) img.replaceWith(fallback()); });   // a broken link falls back to the drawing
+    img.src = item.image;
+    box.appendChild(img);
+  } else box.appendChild(fallback());
+  if (item.badge) {
+    const b = document.createElement("span");
+    b.className = "badge-tag";
+    b.textContent = item.badge;
+    box.appendChild(b);
+  }
+  return box;
+}
+
+function makeCard(item) {
+  const card = document.createElement("article");
+  card.className = "item" + (item.available ? "" : " sold");
+  card.appendChild(cardImage(item));
+  const body = document.createElement("div");
+  body.className = "card-body";
+  const top = document.createElement("div");
+  top.className = "card-top";
+  const h = document.createElement("h3"); h.textContent = item.name;
+  const price = document.createElement("div"); price.className = "price"; price.textContent = rupees(item.price);
+  top.appendChild(h); top.appendChild(price);
+  body.appendChild(top);
+  if (item.unit) { const u = document.createElement("p"); u.className = "unit"; u.textContent = item.unit; body.appendChild(u); }
+  if (item.description) { const d = document.createElement("p"); d.className = "desc"; d.textContent = item.description; body.appendChild(d); }
+  const ctl = document.createElement("div");
+  ctl.className = "ctl";
+  ctl.innerHTML = controlHTML(item);
+  body.appendChild(ctl);
+  card.appendChild(body);
+  return card;
+}
+
 function renderMenu() {
   const root = $("menu");
   root.innerHTML = "";
-  const cats = [...new Set(MENU.map(i => i.category))].filter(c => activeCategory === "All" || c === activeCategory);
-  cats.forEach(cat => {
-    const section = document.createElement("section");
-    section.className = "category";
-    section.innerHTML = `<h2>${esc(cat)}</h2>`;
-    MENU.filter(i => i.category === cat).forEach(item => {
-      const row = document.createElement("div");
-      row.className = "item" + (item.available ? "" : " sold");
-      row.innerHTML = `
-        <div>
-          <h3>${esc(item.name)}</h3>
-          <p>${esc(item.description)}</p>
-          <div class="ctl">${controlHTML(item)}</div>
-        </div>
-        <div class="price">${rupees(item.price)}</div>`;
-      section.appendChild(row);
-    });
-    root.appendChild(section);
+  const grid = document.createElement("section");
+  grid.className = "category";
+  MENU.filter(i => activeCategory === "All" || i.category === activeCategory).forEach(item => grid.appendChild(makeCard(item)));
+  root.appendChild(grid);
+}
+
+// ---------- The rest of the page: hero, steps, pick-up section, footer ----------
+// {ahead}, {freeLine} and {free} in the text settings are filled in from the shop's real rules
+function fillTokens(str) {
+  const free = effFreeAbove(), lead = CONFIG.leadDays || 0, max = CONFIG.maxDays || 60;
+  const ahead = lead === 0 ? (max <= 31 ? "Same day or up to " + max + " days ahead." : "Same day orders welcome.")
+                           : (max <= 31 ? "Order " + lead + " day" + (lead === 1 ? "" : "s") + " ahead or more, up to " + max + " days." : "Order at least " + lead + " day" + (lead === 1 ? "" : "s") + " ahead.");
+  return String(str)
+    .replace(/\{ahead\}/g, ahead)
+    .replace(/\{freeLine\}/g, free > 0 ? "Free delivery over " + rupees(free) + "." : "")
+    .replace(/\{free\}/g, free > 0 ? rupees(free) : "")
+    .replace(/\s+/g, " ").trim();
+}
+function artBox(url, fallbackNode) {
+  const u = safeImageUrl(url);
+  if (!u) return fallbackNode;
+  const img = new Image();
+  img.alt = "";
+  img.loading = "lazy";
+  img.addEventListener("error", () => { if (img.isConnected) img.replaceWith(fallbackNode); });
+  img.src = u;
+  return img;
+}
+function renderPage() {
+  const H = CONFIG.hero || {}, V = CONFIG.visit || {};
+  $("logoMark").textContent = String(CONFIG.logoLetter || CONFIG.shopName.charAt(0) || "B").toUpperCase();
+  $("navMenu").textContent = CONFIG.navMenu || "Menu";
+  $("navVisit").textContent = CONFIG.navVisit || "Visit";
+  $("navBasket").textContent = CONFIG.navBasket || "Basket";
+  $("topIcon").innerHTML = icon("basket", 18);
+  $("heroPill").textContent = H.pill || "";
+  $("heroPill").hidden = !H.pill;
+  $("heroLine1").textContent = H.line1 || CONFIG.shopName;
+  $("heroLine2").textContent = H.line2 || "";
+  $("heroText").textContent = fillTokens(H.text || CONFIG.tagline || "");
+  $("heroCta1").textContent = H.cta1 || "Browse the menu";
+  $("heroCta2").textContent = H.cta2 || "My basket";
+  $("heroCardTitle").textContent = H.cardTitle || "";
+  $("heroCardSub").textContent = fillTokens(effFreeAbove() > 0 ? (H.cardSub || "") : (H.cardSubNoFree || ""));
+  $("heroCardTitle").parentElement.hidden = !(H.cardTitle || $("heroCardSub").textContent);
+  const art = $("heroArt"); art.textContent = ""; art.appendChild(artBox(H.image, heroSvg()));
+
+  const steps = $("steps"); steps.textContent = "";
+  (CONFIG.steps || []).forEach((st, i) => {
+    const row = document.createElement("div"); row.className = "step";
+    const ic = document.createElement("span"); ic.className = "step-icon"; ic.innerHTML = icon(st.icon, 22);
+    const box = document.createElement("div");
+    const small = document.createElement("small"); small.textContent = "Step " + (i + 1);
+    const h = document.createElement("h3"); h.textContent = st.title || "";
+    const p = document.createElement("p"); p.textContent = fillTokens(st.text || "");
+    box.appendChild(small); box.appendChild(h); box.appendChild(p);
+    row.appendChild(ic); row.appendChild(box);
+    steps.appendChild(row);
   });
+
+  $("menuEyebrow").textContent = CONFIG.menuEyebrow || "";
+  $("menuTitle").textContent = CONFIG.menuTitle || "Menu";
+  $("visitEyebrow").textContent = V.eyebrow || "";
+  $("visitTitle").textContent = V.title || "";
+  $("visitText").textContent = V.text || "";
+  const lines = $("visitLines"); lines.textContent = "";
+  (V.lines || []).forEach(l => {
+    const li = document.createElement("li");
+    const ic = document.createElement("span"); ic.innerHTML = icon(l.icon, 20);
+    const t = document.createElement("span"); t.textContent = l.text || "";
+    li.appendChild(ic); li.appendChild(t); lines.appendChild(li);
+  });
+  const va = $("visitArt"); va.textContent = ""; va.appendChild(artBox(V.image, artSvg("biscuit", 2)));
+  $("visit").hidden = !(V.title || (V.lines || []).length);
+  $("navVisit").hidden = $("visit").hidden;
+
+  $("footBrand").textContent = CONFIG.shopName;
+  $("footTagline").textContent = CONFIG.footerTagline || "";
+  $("staffLink").textContent = CONFIG.staffLabel || "";
+  $("staffLink").hidden = !CONFIG.staffLabel;
 }
 
 function renderBar() {
@@ -503,6 +822,8 @@ function renderBar() {
   $("bar").hidden = count === 0 || !ordersOpen;
   $("barCount").textContent = count + (count === 1 ? " item" : " items");
   $("barTotal").textContent = rupees(total);
+  $("topCount").textContent = String(count);
+  $("topCount").hidden = count === 0 || !ordersOpen;
 }
 
 const PAY_TEXT = { UPI: "UPI (I'll send the payment screenshot)", COD: "Cash on delivery", PAY_AT_PICKUP: "Pay at pickup" };
@@ -639,6 +960,8 @@ window.addEventListener("popstate", () => {
 });
 
 $("openCart").onclick = openCart;
+$("openCartTop").onclick = openCart;
+$("heroCta2").onclick = openCart;
 $("closeCart").onclick = closeCart;
 $("overlay").onclick = closeCart;
 document.addEventListener("keydown", e => {
@@ -1334,6 +1657,7 @@ $("checkout").addEventListener("click", e => {
 try { if (history.state && history.state.cart) history.replaceState(null, ""); } catch (e) { /* ignore */ }
 if (CONFIG.colors) {
   const root = document.documentElement.style;
+  if (CONFIG.colors.caramel) root.setProperty("--caramel", CONFIG.colors.caramel);
   if (CONFIG.colors.main) root.setProperty("--oxide", CONFIG.colors.main);
   if (CONFIG.colors.accent) root.setProperty("--gold", CONFIG.colors.accent);
   if (CONFIG.colors.background) root.setProperty("--ivory", CONFIG.colors.background);
@@ -1362,6 +1686,7 @@ document.title = CONFIG.shopName;
 $("shopName").textContent = CONFIG.shopName;
 $("tagline").textContent = CONFIG.tagline;
 $("footer").textContent = CONFIG.area;
+renderPage();
 
 // Turn one database row into the item shape the page uses
 function normalizeItem(r) {
@@ -1371,7 +1696,10 @@ function normalizeItem(r) {
     category: String(r.category || "").trim() || "Other",
     price: Math.round(Number(r.price)),
     description: r.description ? String(r.description) : "",
-    available: r.available !== false
+    available: r.available !== false,
+    image: safeImageUrl(r.image_url),
+    badge: String(r.badge || "").trim().slice(0, 30),
+    unit: String(r.unit_label || "").trim().slice(0, 40)
   };
 }
 const validItem = i => Number.isFinite(i.id) && i.name && Number.isFinite(i.price) && i.price >= 0;
@@ -1382,8 +1710,10 @@ async function loadMenu() {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);        // don't wait forever on a slow connection
   try {
-    const url = CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/menu_items?select=id,name,category,price,description,available&order=sort_order.asc,id.asc";
-    const res = await fetch(url, { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal });
+    const base = CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/menu_items?select=";
+    const tail = "&order=sort_order.asc,id.asc", opts = { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal };
+    let res = await fetch(base + "id,name,category,price,description,available,image_url,badge,unit_label" + tail, opts);
+    if (!res.ok) res = await fetch(base + "id,name,category,price,description,available" + tail, opts);   // a database without the photo, badge and unit columns yet
     if (!res.ok) throw new Error("HTTP " + res.status);
     const items = (await res.json()).map(normalizeItem).filter(validItem);
     if (!items.length) throw new Error("no menu items returned");
@@ -1402,6 +1732,7 @@ async function loadMenu() {
 async function start() {
   $("menu").innerHTML = '<p class="status">Loading menu…</p>';
   await Promise.all([loadMenu(), fetchOrdersOpen()]);
+  renderPage();   // again, now that the shop's rules (free delivery amount) are known
   $("pausedNote").textContent = CONFIG.pausedMessage;
   $("pausedNote").hidden = ordersOpen;
   renderFilters();

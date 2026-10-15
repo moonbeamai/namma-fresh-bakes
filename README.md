@@ -41,6 +41,24 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 4. The page shows "Loading menu…" while it fetches. If the database can't be reached, it shows the built-in `MENU` and a notice that prices may be out of date.
 5. Free Supabase projects pause after a week with no activity. Fine for demos. For a paying client, use a paid plan or keep the project active.
 
+## The storefront design (Week 4)
+
+`index.html` is a full storefront: a sticky header (round logo, shop name, Menu, Visit, Basket with a count), a hero with a big headline (second line in italic), a three-step strip, a menu of photo cards with category pills, a pick-up section, and a footer with a **Staff** link to the admin page. It works on phones and computers. On a phone the sticky bottom bar shows the basket total; on a computer the header Basket button is used.
+
+**Per client, edit the `CONFIG` block** (everything below is plain text in one place):
+- `colors`: `main` (dark brown), `accent` (amber labels), `background` (cream) and `caramel` (Add to basket buttons and the italic headline words).
+- `logoLetter`, `navMenu`, `navVisit`, `navBasket`.
+- `hero`: `pill`, `line1`, `line2` (the italic line), `text`, `cta1`, `cta2`, `image` (photo link, or empty for a drawing), `cardTitle`, `cardSub` and `cardSubNoFree`.
+- `steps`: three steps, each with an `icon` (basket, clock or wallet), `title` and `text`. In `text`, `{ahead}` becomes the real ordering window (from `leadDays` and `maxDays`, for example "Same day or up to 7 days ahead.") and `{freeLine}` becomes "Free delivery over ₹500." from the shop's Settings. If there is no free delivery amount, that sentence is left out.
+- `menuEyebrow`, `menuTitle`.
+- `visit`: `eyebrow`, `title`, `text`, `lines` (each with an `icon`: clock, pin or oven, and `text`) and `image`. Leave `title` empty and `lines` empty to hide the section and the Visit link.
+- `footerTagline`, `staffLabel` (empty hides the Staff link), and `area` (the delivery note in the footer).
+- Set `leadDays: 0` and `maxDays: 7` for "same day or up to a week ahead".
+
+**Menu photos, badges and unit labels.** Run `supabase-menu-extras.sql` once per client. It adds three optional columns to `menu_items`: `image_url` (a link starting with `https://`, or `images/...` for a file in the site's images folder), `badge` (up to 30 letters, shown on the photo) and `unit_label` (up to 40 letters, shown under the name, like BOX OF 4). The owner edits them in the admin Menu tab, which shows a small preview of the photo. Without a photo the card shows a drawing, and a link that fails to load also falls back to the drawing. The database refuses unsafe links.
+
+**Pictures.** The drawings and the placeholder text in `CONFIG` are only placeholders. Use the client's own photos, logo and wording. Do not reuse another business's photos or text. Photo links can point to any https image address. The first version of the admin takes a link; uploading photos from the admin page is a later step.
+
 ## Saving orders (Week 3)
 
 Run `supabase-orders.sql` once per client in the Supabase SQL Editor, after replacing `PASTE-OWNER-UID` with the owner's User UID. It creates the `orders` and `shop_settings` tables, an `is_owner()` check, and a `place_order()` function.
@@ -74,7 +92,7 @@ One page, one login, two tabs.
 **Menu tab**: change name, price, category and description, switch items between Available and Sold out, add new items, delete items (two taps to confirm).
 
 Setup:
-- Put `admin.html` and `supabase-js.umd.js` in the same folder and repo as `index.html`. After deploying it lives at `your-site-link/admin.html`. `admin.html#menu` opens the Menu tab.
+- Put `admin.html` and `supabase-js.umd.js` in the same folder and repo as `index.html`. The **Menu** tab also edits the photo link, badge and unit label of each item (after `supabase-menu-extras.sql` has been run). After deploying it lives at `your-site-link/admin.html`. `admin.html#menu` opens the Menu tab.
 - Fill in the same `CONFIG` fields: `shopName`, `supabaseUrl`, `supabaseKey` (publishable key only).
 - The owner's login is created by you in Supabase under Authentication, Users. Keep public sign-ups switched off.
 - The page asks search engines not to index it, but the link is not a secret. The login is what protects the data: only the owner can read orders or change the menu, enforced by the rules in Supabase.
