@@ -43,11 +43,11 @@ Customers choose **Delivery** or **Pickup**. The address field only appears, and
 
 ## The storefront design (Week 4)
 
-`index.html` is a full storefront: a sticky header (round logo, shop name, Menu, Visit, Basket with a count), a hero with a big headline (second line in italic), a three-step strip, a menu of photo cards with category pills, a pick-up section, and a footer with a **Staff** link to the admin page. It works on phones and computers. On a phone the sticky bottom bar shows the basket total; on a computer the header Basket button is used.
+`index.html` is a full storefront: a sticky header (round logo, shop name, Menu, Visit, Basket with a count), a hero with a big headline (second line in italic), a three-step strip on a lighter, dotted full-width band, a menu of photo cards with category pills, a pick-up section, and a footer with a **Staff** link to the admin page. It works on phones and computers. On a phone the sticky bottom bar shows the basket total; on a computer the header Basket button is used.
 
 **Per client, edit the `CONFIG` block** (everything below is plain text in one place):
 - `colors`: `main` (dark brown), `accent` (amber labels), `background` (cream) and `caramel` (Add to basket buttons and the italic headline words).
-- `logoLetter`, `navMenu`, `navVisit`, `navBasket`.
+- `logoLetter`, `navMenu`, `navVisit`, `navBasket`, and `addLabel` (the text on each card's button, "Add to basket").
 - `hero`: `pill`, `line1`, `line2` (the italic line), `text`, `cta1`, `cta2`, `image` (photo link, or empty for a drawing), `cardTitle`, `cardSub` and `cardSubNoFree`.
 - `steps`: three steps, each with an `icon` (basket, clock or wallet), `title` and `text`. In `text`, `{ahead}` becomes the real ordering window (from `leadDays` and `maxDays`, for example "Same day or up to 7 days ahead.") and `{freeLine}` becomes "Free delivery over ₹500." from the shop's Settings. If there is no free delivery amount, that sentence is left out.
 - `menuEyebrow`, `menuTitle`.

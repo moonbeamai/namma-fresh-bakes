@@ -66,7 +66,8 @@
   .float-card span { color: var(--muted); font-size: 0.85rem; }
 
   /* Three steps */
-  .steps { display: grid; gap: 20px; padding-top: 30px; padding-bottom: 30px; }
+  .steps-band { margin-top: 28px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background-color: #fdf8ee; background-image: radial-gradient(rgba(122, 102, 87, 0.13) 1px, transparent 1.3px); background-size: 14px 14px; }
+  .steps { display: grid; gap: 22px; padding-top: 34px; padding-bottom: 34px; }
   .step { display: flex; align-items: flex-start; gap: 14px; }
   .step-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--cream2); color: var(--caramel); }
   .step small { display: block; color: var(--muted); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -292,6 +293,7 @@ const CONFIG = {
   /* ---------- storefront text: edit these for each client ---------- */
   logoLetter: "N",                       // the letter in the round logo ("" = first letter of shopName)
   navMenu: "Menu", navVisit: "Visit", navBasket: "Basket",
+  addLabel: "Add to basket",             // the text on each menu card's button
   hero: {
     pill: "Small-batch · Home kitchen · Bengaluru",     // "" hides it
     line1: "Baked fresh at home,",
@@ -378,7 +380,9 @@ const MENU = [
     </div>
   </section>
 
-  <section class="wrap steps" id="steps" aria-label="How it works"></section>
+  <div class="steps-band">
+    <section class="wrap steps" id="steps" aria-label="How it works"></section>
+  </div>
 
   <section class="wrap" id="menuSection" aria-labelledby="menuTitle">
     <div class="menu-head">
@@ -624,7 +628,7 @@ function stepperHTML(item) {
 function controlHTML(item) {
   if (!item.available) return `<button type="button" class="btn" disabled>Sold out</button>`;
   if (!ordersOpen && !cart[item.id]) return `<button type="button" class="btn" disabled>Not taking orders</button>`;
-  if (!cart[item.id]) return `<button type="button" class="btn" data-act="add" data-id="${item.id}" aria-label="Add ${esc(item.name)} to cart">Add</button>`;
+  if (!cart[item.id]) return `<button type="button" class="btn" data-act="add" data-id="${item.id}" aria-label="Add ${esc(item.name)} to your basket">${esc(CONFIG.addLabel || "Add to basket")}</button>`;
   return stepperHTML(item);
 }
 
