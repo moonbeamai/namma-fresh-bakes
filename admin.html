@@ -204,8 +204,10 @@ const CONFIG = {
           <p class="muted">Customers who choose UPI pay this ID. UPI is not offered until you add one.</p>
         </div>
         <div class="field sw-wrap"><input id="sUpi" type="checkbox" class="sw"><label for="sUpi" class="sw-label">Accept UPI</label></div>
+        <div class="field sw-wrap"><input id="sBtn" type="checkbox" class="sw"><label for="sBtn" class="sw-label">Show a "Pay with UPI" button on phones</label></div>
+        <p class="muted">Opens the customer's UPI app with your UPI ID filled in. Some UPI apps and banks restrict or fail payments that start from a web link, especially to a personal UPI ID, so try it with a few apps before you leave it on. Customers always have the QR code and the UPI ID to type as well.</p>
         <div class="field sw-wrap"><input id="sPrefill" type="checkbox" class="sw"><label for="sPrefill" class="sw-label">This is a business UPI ID</label></div>
-        <p class="muted">Turn this on only if the UPI ID above is a <strong>business</strong> UPI ID (from PhonePe, Paytm or Google Pay for Business, or a bank's merchant account). It fills in the amount and order number and shows a <strong>Pay with UPI</strong> button on phones. With a personal UPI ID, UPI apps often restrict or fail payments that start from a web link, so leave it off: customers then scan the QR code or type the UPI ID and amount, which works in every UPI app.</p>
+        <p class="muted">Turn this on only if the UPI ID above is a <strong>business</strong> UPI ID (from PhonePe, Paytm or Google Pay for Business, or a bank's merchant account). It fills in the amount and order number and always shows the <strong>Pay with UPI</strong> button on phones. With a personal UPI ID, keep it off: customers then type the amount themselves, which works in every UPI app.</p>
         <div class="field sw-wrap"><input id="sCod" type="checkbox" class="sw"><label for="sCod" class="sw-label">Accept cash on delivery</label></div>
         <div class="field sw-wrap"><input id="sPickup" type="checkbox" class="sw"><label for="sPickup" class="sw-label">Accept pay at pickup</label></div>
         <div class="field">
@@ -953,6 +955,7 @@ const CONFIG = {
   var hasPayCols = true;       // false on a database that has not been updated for payments yet
   var hasPrefillCol = true;    // false on a database without the upi_prefill column
   var hasExtraCols = true;     // false on a database without the photo, badge and unit label columns
+  var hasButtonCol = true;     // false on a database without the upi_button column
   var UPI_RE = /^[A-Za-z0-9._-]{2,64}@[A-Za-z0-9]{2,32}$/;
   var AMOUNTS = [["sCodMax", "cod_max_total", "cash on delivery limit"], ["sMin", "min_order", "minimum order"],
                  ["sDelivery", "delivery_charge", "delivery charge"], ["sFree", "free_delivery_above", "free delivery amount"]];
@@ -961,6 +964,7 @@ const CONFIG = {
     $("sUpiId").value = r.upi_id || "";
     $("sUpi").checked = !!r.accept_upi;
     $("sPrefill").checked = !!r.upi_prefill;
+    $("sBtn").checked = !!r.upi_button;
     $("sCod").checked = !!r.accept_cod;
     $("sPickup").checked = !!r.accept_pay_at_pickup;
     AMOUNTS.forEach(function (a) { $(a[0]).value = r[a[1]] === undefined || r[a[1]] === null ? "" : String(r[a[1]]); });
@@ -968,7 +972,7 @@ const CONFIG = {
   }
 
   function readSettingsForm() {
-    var v = { upi_id: $("sUpiId").value.trim(), accept_upi: $("sUpi").checked, upi_prefill: $("sPrefill").checked, accept_cod: $("sCod").checked, accept_pay_at_pickup: $("sPickup").checked };
+    var v = { upi_id: $("sUpiId").value.trim(), accept_upi: $("sUpi").checked, upi_prefill: $("sPrefill").checked, upi_button: $("sBtn").checked, accept_cod: $("sCod").checked, accept_pay_at_pickup: $("sPickup").checked };
     AMOUNTS.forEach(function (a) { v[a[1]] = $(a[0]).value.trim(); });
     return v;
   }
@@ -978,6 +982,7 @@ const CONFIG = {
     var v = readSettingsForm();
     if (v.upi_id !== (shopRow.upi_id || "")) return true;
     if (hasPayCols && hasPrefillCol && v.upi_prefill !== !!shopRow.upi_prefill) return true;
+    if (hasPayCols && hasButtonCol && v.upi_button !== !!shopRow.upi_button) return true;
     if (hasPayCols && (v.accept_upi !== !!shopRow.accept_upi || v.accept_cod !== !!shopRow.accept_cod || v.accept_pay_at_pickup !== !!shopRow.accept_pay_at_pickup)) return true;
     return AMOUNTS.some(function (a) { return v[a[1]] !== (shopRow[a[1]] === undefined || shopRow[a[1]] === null ? "" : String(shopRow[a[1]])); });
   }
@@ -999,18 +1004,23 @@ const CONFIG = {
     $("settingsNote").textContent = hasPayCols ? "" : "Payment settings need the latest supabase-orders.sql to be run in Supabase. Until then, only the amounts below can be changed.";
     ["sUpiId", "sUpi", "sCod", "sPickup", "sCodMax", "sFree"].forEach(function (id) { $(id).disabled = !hasPayCols; });
     $("sPrefill").disabled = !hasPayCols || !hasPrefillCol;
+    $("sBtn").disabled = !hasPayCols || !hasButtonCol;
   }
 
   function isColumnError(err) { return !!err && (err.code === "42703" || /does not exist|column/i.test(String(err.message || ""))); }
   function loadShopSettings() {
     var full = "accepting_orders,min_order,delivery_charge,free_delivery_above,cod_max_total,accept_upi,accept_cod,accept_pay_at_pickup,upi_id";
-    sb.from("shop_settings").select(full + ",upi_prefill").limit(1).then(function (res) {
-      if (isColumnError(res.error)) { hasPrefillCol = false; return sb.from("shop_settings").select(full).limit(1); }   // no upi_prefill column yet
-      hasPrefillCol = true;
+    sb.from("shop_settings").select(full + ",upi_prefill,upi_button").limit(1).then(function (res) {
+      if (isColumnError(res.error)) { hasButtonCol = false; return sb.from("shop_settings").select(full + ",upi_prefill").limit(1); }   // no upi_button column yet
+      hasButtonCol = true;
+      return res;
+    }).then(function (res) {
+      if (isColumnError(res.error)) { hasButtonCol = false; hasPrefillCol = false; return sb.from("shop_settings").select(full).limit(1); }   // no upi_prefill column yet
+      if (!res.error) hasPrefillCol = true;
       return res;
     }).then(function (res) {
       if (isColumnError(res.error)) {                // no payment columns at all yet
-        hasPayCols = false; hasPrefillCol = false;
+        hasPayCols = false; hasPrefillCol = false; hasButtonCol = false;
         return sb.from("shop_settings").select("accepting_orders,min_order,delivery_charge").limit(1);
       }
       hasPayCols = true;
@@ -1030,6 +1040,7 @@ const CONFIG = {
       out.upi_id = v.upi_id || null;
       out.accept_upi = v.accept_upi; out.accept_cod = v.accept_cod; out.accept_pay_at_pickup = v.accept_pay_at_pickup;
       if (hasPrefillCol) out.upi_prefill = v.upi_prefill;
+      if (hasButtonCol) out.upi_button = v.upi_button;
     }
     for (var i = 0; i < AMOUNTS.length; i++) {
       var key = AMOUNTS[i][1], label = AMOUNTS[i][2];

@@ -103,7 +103,7 @@ Setup:
 After the customer taps **Place order** the page shows a payment choice, and the order is saved only when they confirm it:
 - **Delivery orders:** UPI or Cash on delivery.
 - **Pickup orders:** UPI or Pay at pickup.
-- **UPI:** the confirmation offers three ways to pay. With a **business** UPI ID and the `upi_prefill` setting on (shown as **This is a business UPI ID** in the admin Settings), phones get a **Pay with UPI** button that opens the customer's UPI app with the UPI ID, exact total and order number filled in. With a **personal** UPI ID (the default), there is no such button, because UPI apps often restrict or fail payments that start from a web link (PhonePe shows a screenshot-payment limit notice, Amazon Pay a "technical error"). Those customers get the QR code and the UPI ID, amount and note to type, which work in every UPI app. A **QR code** (shown straight away on a computer, behind a **Show QR code** button on a phone) can be scanned by any UPI app, or screenshotted and used with Scan from gallery. And the UPI ID, amount and note are shown with Copy buttons for paying by hand. The customer then sends the order on WhatsApp with the payment screenshot. A computer cannot open UPI links, so the button only appears on phones.
+- **UPI:** the confirmation offers three ways to pay. With a **business** UPI ID and the `upi_prefill` setting on (shown as **This is a business UPI ID** in the admin Settings), phones get a **Pay with UPI** button that opens the customer's UPI app with the UPI ID, exact total and order number filled in. With a **personal** UPI ID (the default), the button is off, because UPI apps and banks often restrict or fail payments that start from a web link (in testing, Amazon Pay gave a "technical error" for a link with the amount filled in, and PhonePe showed a screenshot-and-link limit notice). The owner can switch **Show a "Pay with UPI" button on phones** on in Settings (`upi_button`) to try it: the button then opens the UPI app with only the UPI ID filled in, and the customer types the amount. Test it with several UPI apps and banks before leaving it on. In every case customers also get the QR code and the UPI ID, amount and note to type, which work in every UPI app. A **QR code** (shown straight away on a computer, behind a **Show QR code** button on a phone) can be scanned by any UPI app, or screenshotted and used with Scan from gallery. And the UPI ID, amount and note are shown with Copy buttons for paying by hand. The customer then sends the order on WhatsApp with the payment screenshot. A computer cannot open UPI links, so the button only appears on phones.
 - **The page cannot see whether a UPI payment went through.** Orders start as `unpaid`. After paying, the customer taps **I've paid** on the confirmation. That flags the order as **Payment reported** in the admin, with an alert like the new-order one, but it is only the customer's word. The owner checks their UPI app, matches the order number in the payment note, and taps **Mark paid**. Treat UPI orders as unconfirmed until then. Fully automatic payment confirmation needs a payment gateway.
 
 These live in the `shop_settings` table (one row). The owner changes them in the admin page's **Settings** tab; you can also edit them in Table Editor:
@@ -112,7 +112,8 @@ These live in the `shop_settings` table (one row). The owner changes them in the
 | --- | --- |
 | `upi_id` | The shop's UPI ID, like `shopname@okaxis`. UPI is not offered until this is set |
 | `accept_upi`, `accept_cod`, `accept_pay_at_pickup` | Switch each payment method on or off |
-| `upi_prefill` | Off (default, personal UPI ID): the QR carries only the UPI ID and the customer types the amount; there is no Pay with UPI button. On (business UPI ID): the amount and order number are filled in and phones get the Pay with UPI button |
+| `upi_prefill` | Off (default, personal UPI ID): the QR carries only the UPI ID and the customer types the amount. On (business UPI ID): the amount and order number are filled in, and phones always get the Pay with UPI button |
+| `upi_button` | Off (default): no Pay with UPI button on phones for a personal UPI ID. On: phones get an "Open UPI app to pay" button with only the UPI ID filled in. Try it before relying on it |
 | `cod_max_total` | Largest order total allowed for cash on delivery. `0` = no limit. Default 1500 |
 | `free_delivery_above` | Items total at or above this get free delivery. `0` = never free. Default 1000 |
 | `min_order`, `delivery_charge` | As before |
@@ -133,6 +134,18 @@ If a UPI payment fails inside the customer's UPI app (for example Amazon Pay say
 - **Customers see the account holder's name** in their UPI app. If it differs from the shop's name, some will hesitate. A business UPI ID or QR where the name matches the shop is more trusted.
 
 Use a business UPI ID or QR where the shop has one. Cash on delivery for large custom orders carries a risk of refusal, which the COD limit is there to reduce.
+
+## Hosting on Cloudflare (instead of Netlify)
+
+Netlify's free plan has 300 credits a month, and each production deploy (each `git push`) costs 15 of them, so frequent updates can pause the site. All sites on one account share the credits. Cloudflare serves static files without that limit and allows commercial use.
+
+1. Put the project in a GitHub repo. In Cloudflare, go to Workers & Pages, Create, connect GitHub, and pick the repo. Leave the build command empty.
+2. Cloudflare publishes the repo folder as a Worker with static assets. Unlike Cloudflare Pages, it **does not skip the `.git` folder**, so without protection the repository's history is downloadable from the site. The repo therefore needs the two files below in its root folder:
+   - `.assetsignore` lists files that must not be published: `.git/`, `.gitignore`, `.wrangler/`, `wrangler.jsonc`, `README.md` and `*.sql`.
+   - `wrangler.jsonc` names the project and says the site files are in the root folder (`"assets": {"directory": "."}`). Change `name` for each client.
+3. `_headers` is read natively by Cloudflare. Keep it in the root.
+4. After the first deploy, open `your-site-link/.git/config` and `your-site-link/README.md`. Both must show "not found". If either shows text, the `.assetsignore` file is missing or misnamed (on Windows it must not end in `.txt`).
+5. Give each client's site its own Cloudflare account, owned by the client, and include hosting in your pricing.
 
 ## Privacy and keeping order data (Week 3)
 

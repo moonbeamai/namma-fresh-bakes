@@ -1131,7 +1131,8 @@ function applySettingsRow(r) {
     pickup: r.accept_pay_at_pickup === true,
     upiId: r.upi_id || "",
     payments: r.accept_upi !== undefined,
-    upiPrefill: r.upi_prefill === true     // fill in the amount automatically (business UPI IDs only)
+    upiPrefill: r.upi_prefill === true,    // fill in the amount automatically (business UPI IDs)
+    upiButton: r.upi_button === true       // show the 'open my UPI app' button on phones even without that
   };
 }
 const ordersCheckIsStale = () => SAVE_ORDERS && Date.now() - ordersCheckedAt > 30000;
@@ -1144,8 +1145,9 @@ async function fetchOrdersOpen() {
     const base = CONFIG.supabaseUrl.replace(/\/+$/, "") + "/rest/v1/shop_settings?select=";
     const opts = { headers: { apikey: CONFIG.supabaseKey }, signal: ctrl.signal };
     const PAY = "accepting_orders,min_order,delivery_charge,free_delivery_above,cod_max_total,accept_upi,accept_cod,accept_pay_at_pickup,upi_id";
-    let res = await fetch(base + PAY + ",upi_prefill&limit=1", opts);
+    let res = await fetch(base + PAY + ",upi_prefill,upi_button&limit=1", opts);
     // a database that has not been updated yet does not have the newer columns: ask for fewer
+    if (!res.ok) res = await fetch(base + PAY + ",upi_prefill&limit=1", opts);
     if (!res.ok) res = await fetch(base + PAY + "&limit=1", opts);
     if (!res.ok) res = await fetch(base + "accepting_orders,min_order,delivery_charge&limit=1", opts);
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1431,9 +1433,10 @@ function fillConfirmation(po) {
     const link = upiLink(S.upiId, body.total, body.order_ref);
     $("upiPay").href = link;
     $("upiPay").textContent = fill ? "Pay " + rupees(body.total) + " with UPI" : "Open UPI app to pay";
-    // The "open my UPI app" button only goes to phones, and only for business UPI IDs. For a personal UPI ID some UPI apps
-    // restrict or fail payments that start from a web link, so those customers get the QR code and the details to type instead.
-    const showButton = IS_PHONE && fill;
+    // The "open my UPI app" button only goes to phones. A business UPI ID always gets it. With a personal UPI ID the owner
+    // chooses (upi_button), because some UPI apps and banks restrict or fail payments that start from a web link.
+    // Everyone also gets the QR code and the details to type.
+    const showButton = IS_PHONE && (fill || S.upiButton);
     $("upiPay").hidden = !showButton;
     $("upiPhoneHelp").hidden = !showButton;
     const haveQR = renderQR(link);

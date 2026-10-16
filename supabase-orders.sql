@@ -114,6 +114,11 @@ alter table shop_settings
     check (upi_id is null or upi_id ~ '^[A-Za-z0-9._-]{2,64}@[A-Za-z0-9]{2,32}$');
 alter table shop_settings
   add column if not exists upi_prefill boolean not null default false;
+alter table shop_settings
+  add column if not exists upi_button boolean not null default false;
+-- upi_button: true = phones also get an "Open UPI app to pay" button (even with a personal UPI ID, with no amount filled in).
+--             Some UPI apps and banks restrict or fail payments that start from a web link, so test it before turning it on.
+--             Shops with a business UPI ID (upi_prefill = true) always get the button.
 -- upi_prefill: false = the UPI link and QR code only carry the shop's UPI ID, and the customer types the
 --              amount (this is how a personal UPI ID is normally paid, and it works with all banks).
 --              true  = the amount and order number are filled in automatically. Use this only with a
